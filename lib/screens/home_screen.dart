@@ -81,7 +81,6 @@ class _home_screenState extends State<home_screen> {
           ),
         ],
       ),
-      ////////////////// TU CODIGO VA AQUI //////////////////
       body: SplashPage(),
     );
   }

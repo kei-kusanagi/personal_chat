@@ -1,12 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:personal_messenger/screens/home_screen.dart';
+import 'package:provider/provider.dart' as Prov;
 
 import 'package:personal_messenger/models/message.dart';
 import 'package:personal_messenger/models/profile.dart';
 import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
+import '../theme/app_theme.dart';
 
 /// Page to chat with someone.
 ///
@@ -41,6 +45,13 @@ class _ChatPageState extends State<ChatPage> {
     super.initState();
   }
 
+  void toggleDarkMode() {
+    setState(() {
+      final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+      themeModel.isDark = !themeModel.isDark;
+    });
+  }
+
   Future<void> _loadProfileCache(String profileId) async {
     if (_profileCache[profileId] != null) {
       return;
@@ -55,8 +66,78 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+    Color pickerColor = themeModel.colorTheme;
+
+    void changeColor(Color color) {
+      setState(() => pickerColor = color);
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat')),
+      // appBar: AppBar(title: const Text('Chat')),
+      appBar: AppBar(
+        backgroundColor: pickerColor,
+        title: Text('Chat'),
+        actions: [
+          IconButton(
+            iconSize: 20,
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: const Text('Pick a color!'),
+                    content: SingleChildScrollView(
+                      child: BlockPicker(
+                        pickerColor: pickerColor,
+                        onColorChanged: changeColor,
+                      ),
+                    ),
+                    actions: <Widget>[
+                      ElevatedButton(
+                        child: const Text('Got it'),
+                        onPressed: () {
+                          setState(() {
+                            themeModel.colorTheme = pickerColor;
+                          });
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: pickerColor,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+            icon: Icon(Icons.color_lens),
+          ),
+          IconButton(
+            icon:
+                themeModel.isDark ? Icon(Icons.sunny) : Icon(Icons.nights_stay),
+            onPressed: toggleDarkMode,
+          ),
+          IconButton(
+              onPressed: () {
+                Logout();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Logout realizado con éxito'),
+                    duration: Duration(
+                        seconds: 2), // Duración del mensaje en pantalla
+                  ),
+                );
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => home_screen(title: 'Bienvenido')),
+                  (route) => false,
+                );
+              },
+              icon: Icon(Icons.logout))
+        ],
+      ),
       body: StreamBuilder<List<Message>>(
         stream: _messagesStream,
         builder: (context, snapshot) {
@@ -115,7 +196,7 @@ class _MessageBarState extends State<_MessageBar> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.grey[200],
+      color: Theme.of(context).splashColor,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
@@ -190,6 +271,7 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     List<Widget> chatContents = [
       if (!message.isMine)
         CircleAvatar(
@@ -206,8 +288,8 @@ class _ChatBubble extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: message.isMine
-                ? Theme.of(context).primaryColor
-                : Colors.grey[300],
+                ? themeModel.colorTheme
+                : Theme.of(context).focusColor,
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(message.content),
@@ -229,4 +311,8 @@ class _ChatBubble extends StatelessWidget {
       ),
     );
   }
+}
+
+Logout() async {
+  await supabase.auth.signOut();
 }
