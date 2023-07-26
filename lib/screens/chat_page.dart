@@ -1,8 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:personal_messenger/screens/home_screen.dart';
 import 'package:provider/provider.dart' as Prov;
 
 import 'package:personal_messenger/models/message.dart';
@@ -11,6 +12,7 @@ import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
 import '../theme/app_theme.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Page to chat with someone.
 ///
@@ -120,20 +122,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           IconButton(
               onPressed: () {
-                Logout();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Logout realizado con éxito'),
-                    duration: Duration(
-                        seconds: 2), // Duración del mensaje en pantalla
-                  ),
-                );
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => home_screen(title: 'Bienvenido')),
-                  (route) => false,
-                );
+                Logout(context);
               },
               icon: Icon(Icons.logout))
         ],
@@ -192,6 +181,14 @@ class _MessageBar extends StatefulWidget {
 
 class _MessageBarState extends State<_MessageBar> {
   late final TextEditingController _textController;
+  Uint8List? _image;
+
+  void selectImage() async {
+    Uint8List img = await pickImage(ImageSource.gallery);
+    setState(() {
+      _image = img;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +199,10 @@ class _MessageBarState extends State<_MessageBar> {
           padding: const EdgeInsets.all(8.0),
           child: Row(
             children: [
+              IconButton(
+                onPressed: () => selectImage(),
+                icon: Icon(Icons.cloud_upload_outlined),
+              ),
               Expanded(
                 child: TextFormField(
                   keyboardType: TextInputType.text,
@@ -259,6 +260,13 @@ class _MessageBarState extends State<_MessageBar> {
   }
 }
 
+Future<void> _saveImage(String advertId, XFile file) async {
+  final myUserId = supabase.auth.currentUser!.id;
+  final response = await supabase.storage
+      .from('images')
+      .upload('${myUserId}/$advertId/${file.name}', File(file.path));
+}
+
 class _ChatBubble extends StatelessWidget {
   const _ChatBubble({
     Key? key,
@@ -313,6 +321,11 @@ class _ChatBubble extends StatelessWidget {
   }
 }
 
-Logout() async {
-  await supabase.auth.signOut();
+pickImage(ImageSource source) async {
+  final ImagePicker _imagePicker = ImagePicker();
+  XFile? _file = await _imagePicker.pickImage(source: source);
+  if (_file != null) {
+    return await _file.readAsBytes();
+  }
+  print('No Images Selected');
 }

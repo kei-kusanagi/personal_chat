@@ -37,6 +37,7 @@ dependencies:
   flutter_colorpicker: ^1.0.3
   dio: ^5.3.0
   timeago: ^3.5.0
+  image_picker: ^1.0.1
 
 dev_dependencies:
   flutter_test:

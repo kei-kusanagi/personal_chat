@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'screens/home_screen.dart';
+
 /// Supabase client
 final supabase = Supabase.instance.client;
 
@@ -33,4 +35,19 @@ extension ShowSnackBar on BuildContext {
   void showErrorSnackBar({required String message}) {
     showSnackBar(message: message, backgroundColor: Colors.red);
   }
+}
+
+Logout(BuildContext context) {
+  supabase.auth.signOut();
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Logout realizado con éxito'),
+      duration: Duration(seconds: 3),
+    ),
+  );
+  Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (context) => home_screen(title: 'Bienvenido')),
+    (route) => false,
+  );
 }
