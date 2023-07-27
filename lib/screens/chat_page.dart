@@ -13,10 +13,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
 import '../theme/app_theme.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Page to chat with someone.
 ///
 /// Displays chat bubbles as a ListView and TextField to enter new chat.
+
+String supabaseUrl = 'https://bdhwkukeejylmfoxyygb.supabase.co';
+String supabaseKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkaHdrdWtlZWp5bG1mb3h5eWdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAyMzM1MjMsImV4cCI6MjAwNTgwOTUyM30.9civyOj1ITEsIAFcwc0nrQB6ihqEcsg2hp2emylRaRQ';
+
 class ChatPage extends StatefulWidget {
   const ChatPage({Key? key}) : super(key: key);
 
@@ -187,11 +194,13 @@ class _MessageBarState extends State<_MessageBar> {
     Uint8List img = await pickImage(ImageSource.gallery);
     setState(() {
       _image = img;
+      // _saveImage(supabase.auth.currentUser!.id, _image as Image);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     return Material(
       color: Theme.of(context).splashColor,
       child: SafeArea(
@@ -200,7 +209,9 @@ class _MessageBarState extends State<_MessageBar> {
           child: Row(
             children: [
               IconButton(
-                onPressed: () => selectImage(),
+                onPressed: () {
+                  _submitImage();
+                },
                 icon: Icon(Icons.cloud_upload_outlined),
               ),
               Expanded(
@@ -258,13 +269,35 @@ class _MessageBarState extends State<_MessageBar> {
       context.showErrorSnackBar(message: unexpectedErrorMessage);
     }
   }
-}
 
-Future<void> _saveImage(String advertId, XFile file) async {
-  final myUserId = supabase.auth.currentUser!.id;
-  final response = await supabase.storage
-      .from('images')
-      .upload('${myUserId}/$advertId/${file.name}', File(file.path));
+  void _submitImage() async {
+    String img_path = '';
+    final myUserId = supabase.auth.currentUser!.id;
+    final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
+    var pickedFile = await FilePicker.platform.pickFiles(allowMultiple: false);
+    if (pickedFile != null) {
+      final file = File(pickedFile.files.first.path!);
+      await client.storage
+          .from('images')
+          .upload(pickedFile.files.first.name, file)
+          .then((response) {
+        img_path = response;
+        print(img_path);
+      });
+
+      try {
+        await supabase.from('messages').insert({
+          'profile_id': myUserId,
+          'content':
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$img_path',
+        });
+      } on PostgrestException catch (error) {
+        context.showErrorSnackBar(message: error.message);
+      } catch (_) {
+        context.showErrorSnackBar(message: unexpectedErrorMessage);
+      }
+    }
+  }
 }
 
 class _ChatBubble extends StatelessWidget {
@@ -279,6 +312,7 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     List<Widget> chatContents = [
       if (!message.isMine)
@@ -300,7 +334,15 @@ class _ChatBubble extends StatelessWidget {
                 : Theme.of(context).focusColor,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Text(message.content),
+          // child: Text(message.content),
+
+          child: isImageUrl
+              ? CachedNetworkImage(
+                  imageUrl: message.content,
+                  placeholder: (context, url) => CircularProgressIndicator(),
+                  errorWidget: (context, url, error) => Icon(Icons.download),
+                )
+              : Text(message.content),
         ),
       ),
       const SizedBox(width: 12),
