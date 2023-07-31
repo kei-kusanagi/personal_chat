@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:provider/provider.dart' as Prov;
 
@@ -11,8 +10,8 @@ import 'package:personal_messenger/models/profile.dart';
 import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
@@ -188,19 +187,9 @@ class _MessageBar extends StatefulWidget {
 
 class _MessageBarState extends State<_MessageBar> {
   late final TextEditingController _textController;
-  Uint8List? _image;
-
-  void selectImage() async {
-    Uint8List img = await pickImage(ImageSource.gallery);
-    setState(() {
-      _image = img;
-      // _saveImage(supabase.auth.currentUser!.id, _image as Image);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
-    final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     return Material(
       color: Theme.of(context).splashColor,
       child: SafeArea(
@@ -210,7 +199,7 @@ class _MessageBarState extends State<_MessageBar> {
             children: [
               IconButton(
                 onPressed: () {
-                  _submitImage();
+                  _submitFile();
                 },
                 icon: Icon(Icons.cloud_upload_outlined),
               ),
@@ -263,38 +252,50 @@ class _MessageBarState extends State<_MessageBar> {
         'profile_id': myUserId,
         'content': text,
       });
-    } on PostgrestException catch (error) {
-      context.showErrorSnackBar(message: error.message);
+    } on PostgrestException catch (Error) {
+      context.showErrorSnackBar(
+          message: Error.message, messageColor: Colors.red);
     } catch (_) {
-      context.showErrorSnackBar(message: unexpectedErrorMessage);
+      context.showErrorSnackBar(
+          message: unexpectedErrorMessage, messageColor: Colors.red);
     }
   }
 
-  void _submitImage() async {
-    String img_path = '';
+  void _submitFile() async {
+    String file_path = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     var pickedFile = await FilePicker.platform.pickFiles(allowMultiple: false);
     if (pickedFile != null) {
       final file = File(pickedFile.files.first.path!);
       await client.storage
-          .from('images')
+          .from('Files')
           .upload(pickedFile.files.first.name, file)
           .then((response) {
-        img_path = response;
-        print(img_path);
+        file_path = response;
+        print(file_path);
       });
 
       try {
         await supabase.from('messages').insert({
           'profile_id': myUserId,
           'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$img_path',
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
         });
-      } on PostgrestException catch (error) {
-        context.showErrorSnackBar(message: error.message);
-      } catch (_) {
-        context.showErrorSnackBar(message: unexpectedErrorMessage);
+        context.showErrorSnackBar(
+          message: "Archivo subido",
+          messageColor: Colors.greenAccent,
+        );
+      } on StorageException catch (error) {
+        context.showErrorSnackBar(
+          message: error.message,
+          messageColor: Colors.red,
+        );
+      } catch (e) {
+        context.showErrorSnackBar(
+          message: unexpectedErrorMessage,
+          messageColor: Colors.red,
+        );
       }
     }
   }
@@ -314,6 +315,8 @@ class _ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+    final Uri _url = Uri.parse(message.content);
+
     List<Widget> chatContents = [
       if (!message.isMine)
         CircleAvatar(
@@ -334,13 +337,21 @@ class _ChatBubble extends StatelessWidget {
                 : Theme.of(context).focusColor,
             borderRadius: BorderRadius.circular(8),
           ),
-          // child: Text(message.content),
-
           child: isImageUrl
-              ? CachedNetworkImage(
-                  imageUrl: message.content,
-                  placeholder: (context, url) => CircularProgressIndicator(),
-                  errorWidget: (context, url, error) => Icon(Icons.download),
+              ? GestureDetector(
+                  onTap: () async {
+                    if (Platform.isAndroid || Platform.isIOS) {
+                      print('mensaje tapeado en Android');
+                    } else {
+                      await launch(message.content);
+                      print('mensaje tapeado en Windows');
+                    }
+                  },
+                  child: CachedNetworkImage(
+                    imageUrl: message.content,
+                    placeholder: (context, url) => CircularProgressIndicator(),
+                    errorWidget: (context, url, error) => Icon(Icons.download),
+                  ),
                 )
               : Text(message.content),
         ),
@@ -363,11 +374,15 @@ class _ChatBubble extends StatelessWidget {
   }
 }
 
-pickImage(ImageSource source) async {
-  final ImagePicker _imagePicker = ImagePicker();
-  XFile? _file = await _imagePicker.pickImage(source: source);
-  if (_file != null) {
-    return await _file.readAsBytes();
-  }
-  print('No Images Selected');
-}
+// void _downloadFile(String url, String fileName) async {
+//   final taskId = await FlutterDownloader.enqueue(
+//     url: url,
+//     savedDir:
+//         'ruta/donde/guardar/el/archivo', // Puedes cambiar esto por el directorio deseado
+//     fileName: fileName,
+//     showNotification:
+//         true, // Mostrar notificación en la barra de estado al descargar
+//     openFileFromNotification:
+//         true, // Abrir automáticamente el archivo descargado cuando se toca la notificación
+//   );
+// }

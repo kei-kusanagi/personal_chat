@@ -32,8 +32,9 @@ extension ShowSnackBar on BuildContext {
   }
 
   /// Displays a red snackbar indicating error
-  void showErrorSnackBar({required String message}) {
-    showSnackBar(message: message, backgroundColor: Colors.red);
+  void showErrorSnackBar(
+      {required String message, required Color messageColor}) {
+    showSnackBar(message: message, backgroundColor: messageColor);
   }
 }
 
