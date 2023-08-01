@@ -316,6 +316,9 @@ class _ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Size screenSize = MediaQuery.of(context).size;
+    double containerWidth = screenSize.width * 0.95;
+    double containerHeight = screenSize.height * 0.95;
     bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     final Uri _url = Uri.parse(message.content);
@@ -341,22 +344,113 @@ class _ChatBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: isImageUrl
+              // ? GestureDetector(
+              //     onTap: () async {
+              //       if (Platform.isAndroid || Platform.isIOS) {
+              //         _downloadFile(message.content, context);
+              //         // await launch(message.content);
+              //         print('mensaje tapeado en Android');
+              //       } else {
+              //         await launch(message.content);
+              //
+              //         print('mensaje tapeado en Windows');
+              //       }
+              //     },
+              //     child: Card(
+              //       child: CachedNetworkImage(
+              //         imageUrl: message.content,
+              //         placeholder: (context, url) => CircularProgressIndicator(),
+              //         errorWidget: (context, url, error) => Icon(Icons.download),
+              //       ),
+              //     ),
+              //   )
               ? GestureDetector(
-                  onTap: () async {
-                    if (Platform.isAndroid || Platform.isIOS) {
-                      _downloadFile(message.content, context);
-                      // await launch(message.content);
-                      print('mensaje tapeado en Android');
-                    } else {
-                      await launch(message.content);
+                  onTap: () {
+                    showDialog(
+                        context: context,
+                        builder: (context) => SingleChildScrollView(
+                              child: AlertDialog(
+                                insetPadding:
+                                    EdgeInsets.only(top: 100, bottom: 100),
+                                contentPadding: EdgeInsets.zero,
+                                content: FractionallySizedBox(
+                                  widthFactor: 0.95,
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CachedNetworkImage(
+                                          imageUrl: message.content,
+                                          fit: BoxFit.contain,
+                                          width: containerWidth, // alto
+                                          height: containerHeight, // ancho
+                                        ),
+                                        SizedBox(height: 2),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(Icons.open_in_browser),
+                                              tooltip: 'Abrir',
+                                              onPressed: () {
+                                                // Acción para abrir la imagen
+                                                // Coloca aquí el código que deseas ejecutar al tocar el botón "Abrir"
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.copy),
+                                              onPressed: () {
+                                                // Acción para copiar la imagen
+                                                // Coloca aquí el código que deseas ejecutar al tocar el botón "Copiar"
+                                                Navigator.of(context).pop();
+                                              },
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.download),
+                                              onPressed: () async {
+                                                if (Platform.isAndroid ||
+                                                    Platform.isIOS) {
+                                                  _downloadFile(
+                                                      message.content, context);
+                                                  // await launch(message.content);
+                                                  print(
+                                                      'mensaje tapeado en Android');
+                                                } else {
+                                                  await launch(message.content);
 
-                      print('mensaje tapeado en Windows');
-                    }
+                                                  print(
+                                                      'mensaje tapeado en Windows');
+                                                }
+                                                Navigator.of(context).pop();
+                                                context.showErrorSnackBar(
+                                                  message:
+                                                      "📎 Descargado en la galeria 🗂",
+                                                  messageColor:
+                                                      Colors.greenAccent,
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ));
                   },
-                  child: CachedNetworkImage(
-                    imageUrl: message.content,
-                    placeholder: (context, url) => CircularProgressIndicator(),
-                    errorWidget: (context, url, error) => Icon(Icons.download),
+                  child: Card(
+                    child: CachedNetworkImage(
+                      imageUrl: message.content,
+                      placeholder: (context, url) =>
+                          CircularProgressIndicator(),
+                      errorWidget: (context, url, error) =>
+                          Icon(Icons.download),
+                    ),
                   ),
                 )
               : Text(message.content),
@@ -384,17 +478,19 @@ void _downloadFile(String url, context) async {
   Dio dio = Dio();
   FileDownloader.downloadFile(
       url: url,
-      onProgress: (url, double progress) {
-        context.showErrorSnackBar(
-            message: progress, messageColor: Colors.purple);
-
-        print('FILE fileName HAS PROGRESS $progress');
-      },
+      // onProgress: (url, double progress) {
+      //   context.showErrorSnackBar(
+      //       message: progress, messageColor: Colors.purple);
+      //
+      //   print('FILE fileName HAS PROGRESS $progress');
+      // },
       onDownloadCompleted: (String path) async {
         print('el maldito path FILE DOWNLOADED TO PATH: $path');
-        Uri filePath = Uri.file(path);
 
-        OpenFile.open(filePath as String?);
+        // esto es para abrir el archivo pero no sirve por ahora
+        // Uri filePath = Uri.file(path);
+        //
+        // OpenFile.open(filePath as String?);
       },
       onDownloadError: (String error) {
         print('DOWNLOAD ERROR: $error');
