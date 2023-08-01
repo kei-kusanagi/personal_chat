@@ -1,8 +1,11 @@
-import 'dart:async';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:flutter_file_downloader/flutter_file_downloader.dart';
+import 'package:open_file/open_file.dart';
+
 import 'package:provider/provider.dart' as Prov;
 
 import 'package:personal_messenger/models/message.dart';
@@ -341,9 +344,12 @@ class _ChatBubble extends StatelessWidget {
               ? GestureDetector(
                   onTap: () async {
                     if (Platform.isAndroid || Platform.isIOS) {
+                      _downloadFile(message.content, context);
+                      // await launch(message.content);
                       print('mensaje tapeado en Android');
                     } else {
                       await launch(message.content);
+
                       print('mensaje tapeado en Windows');
                     }
                   },
@@ -374,15 +380,23 @@ class _ChatBubble extends StatelessWidget {
   }
 }
 
-// void _downloadFile(String url, String fileName) async {
-//   final taskId = await FlutterDownloader.enqueue(
-//     url: url,
-//     savedDir:
-//         'ruta/donde/guardar/el/archivo', // Puedes cambiar esto por el directorio deseado
-//     fileName: fileName,
-//     showNotification:
-//         true, // Mostrar notificación en la barra de estado al descargar
-//     openFileFromNotification:
-//         true, // Abrir automáticamente el archivo descargado cuando se toca la notificación
-//   );
-// }
+void _downloadFile(String url, context) async {
+  Dio dio = Dio();
+  FileDownloader.downloadFile(
+      url: url,
+      onProgress: (url, double progress) {
+        context.showErrorSnackBar(
+            message: progress, messageColor: Colors.purple);
+
+        print('FILE fileName HAS PROGRESS $progress');
+      },
+      onDownloadCompleted: (String path) async {
+        print('el maldito path FILE DOWNLOADED TO PATH: $path');
+        Uri filePath = Uri.file(path);
+
+        OpenFile.open(filePath as String?);
+      },
+      onDownloadError: (String error) {
+        print('DOWNLOAD ERROR: $error');
+      });
+}

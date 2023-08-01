@@ -23,7 +23,8 @@ dependencies:
   cached_network_image: ^3.2.3
   flutter_file_downloader: ^1.1.2 #  android
   download: ^1.0.0 #  windows and mac
-  url_launcher: ^6.1.12
+  open_file: ^3.3.2
+
 
 
 
