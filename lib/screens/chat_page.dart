@@ -344,37 +344,16 @@ class _ChatBubble extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: isImageUrl
-              // ? GestureDetector(
-              //     onTap: () async {
-              //       if (Platform.isAndroid || Platform.isIOS) {
-              //         _downloadFile(message.content, context);
-              //         // await launch(message.content);
-              //         print('mensaje tapeado en Android');
-              //       } else {
-              //         await launch(message.content);
-              //
-              //         print('mensaje tapeado en Windows');
-              //       }
-              //     },
-              //     child: Card(
-              //       child: CachedNetworkImage(
-              //         imageUrl: message.content,
-              //         placeholder: (context, url) => CircularProgressIndicator(),
-              //         errorWidget: (context, url, error) => Icon(Icons.download),
-              //       ),
-              //     ),
-              //   )
               ? GestureDetector(
                   onTap: () {
                     showDialog(
                         context: context,
                         builder: (context) => SingleChildScrollView(
                               child: AlertDialog(
-                                insetPadding:
-                                    EdgeInsets.only(top: 100, bottom: 100),
+                                insetPadding: EdgeInsets.only(),
                                 contentPadding: EdgeInsets.zero,
                                 content: FractionallySizedBox(
-                                  widthFactor: 0.95,
+                                  widthFactor: 0.90,
                                   child: Center(
                                     child: Column(
                                       mainAxisAlignment:
@@ -385,7 +364,8 @@ class _ChatBubble extends StatelessWidget {
                                           imageUrl: message.content,
                                           fit: BoxFit.contain,
                                           width: containerWidth, // alto
-                                          height: containerHeight, // ancho
+                                          height:
+                                              containerHeight / 1.2, // ancho
                                         ),
                                         SizedBox(height: 2),
                                         Row(
@@ -396,8 +376,7 @@ class _ChatBubble extends StatelessWidget {
                                               icon: Icon(Icons.open_in_browser),
                                               tooltip: 'Abrir',
                                               onPressed: () {
-                                                // Acción para abrir la imagen
-                                                // Coloca aquí el código que deseas ejecutar al tocar el botón "Abrir"
+                                                launchUrl(_url);
                                                 Navigator.of(context).pop();
                                               },
                                             ),
