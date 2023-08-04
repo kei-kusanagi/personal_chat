@@ -1,10 +1,9 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
-import 'package:open_file/open_file.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:provider/provider.dart' as Prov;
 
@@ -14,9 +13,11 @@ import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
 import 'package:url_launcher/url_launcher.dart';
+
 import '../theme/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
 
 /// Page to chat with someone.
 ///
@@ -202,6 +203,12 @@ class _MessageBarState extends State<_MessageBar> {
             children: [
               IconButton(
                 onPressed: () {
+                  _submitCamera();
+                },
+                icon: Icon(Icons.camera_alt),
+              ),
+              IconButton(
+                onPressed: () {
                   _submitFile();
                 },
                 icon: Icon(Icons.cloud_upload_outlined),
@@ -274,6 +281,49 @@ class _MessageBarState extends State<_MessageBar> {
       await client.storage
           .from('Files')
           .upload(pickedFile.files.first.name, file)
+          .then((response) {
+        file_path = response;
+        print(file_path);
+      });
+
+      try {
+        await supabase.from('messages').insert({
+          'profile_id': myUserId,
+          'content':
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
+        });
+        context.showErrorSnackBar(
+          message: "Archivo subido",
+          messageColor: Colors.greenAccent,
+        );
+      } on StorageException catch (error) {
+        context.showErrorSnackBar(
+          message: error.message,
+          messageColor: Colors.red,
+        );
+      } catch (e) {
+        context.showErrorSnackBar(
+          message: unexpectedErrorMessage,
+          messageColor: Colors.red,
+        );
+      }
+    }
+  }
+
+  void _submitCamera() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+
+    String file_path = '';
+    final myUserId = supabase.auth.currentUser!.id;
+    final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
+
+    if (photo != null) {
+      final File imageFile = File(photo.path);
+
+      await client.storage
+          .from('Files')
+          .upload(photo.name, imageFile)
           .then((response) {
         file_path = response;
         print(file_path);
@@ -383,6 +433,15 @@ class _ChatBubble extends StatelessWidget {
                                             IconButton(
                                               icon: Icon(Icons.copy),
                                               onPressed: () {
+                                                isImageUrl
+                                                    ? copyImageUrlToClipboard(
+                                                        context,
+                                                        _url.toString())
+                                                    : context.showErrorSnackBar(
+                                                        message:
+                                                            "No se puede copiar el archivo ❌",
+                                                        messageColor:
+                                                            Colors.red);
                                                 // Acción para copiar la imagen
                                                 // Coloca aquí el código que deseas ejecutar al tocar el botón "Copiar"
                                                 Navigator.of(context).pop();
@@ -428,7 +487,8 @@ class _ChatBubble extends StatelessWidget {
                       placeholder: (context, url) =>
                           CircularProgressIndicator(),
                       errorWidget: (context, url, error) =>
-                          Icon(Icons.download),
+                          Icon(Icons.video_collection_rounded),
+                      // YourWidget(videoUrl: message.content),
                     ),
                   ),
                 )
@@ -454,24 +514,80 @@ class _ChatBubble extends StatelessWidget {
 }
 
 void _downloadFile(String url, context) async {
-  Dio dio = Dio();
   FileDownloader.downloadFile(
       url: url,
-      // onProgress: (url, double progress) {
-      //   context.showErrorSnackBar(
-      //       message: progress, messageColor: Colors.purple);
-      //
-      //   print('FILE fileName HAS PROGRESS $progress');
-      // },
       onDownloadCompleted: (String path) async {
         print('el maldito path FILE DOWNLOADED TO PATH: $path');
-
-        // esto es para abrir el archivo pero no sirve por ahora
-        // Uri filePath = Uri.file(path);
-        //
-        // OpenFile.open(filePath as String?);
       },
       onDownloadError: (String error) {
         print('DOWNLOAD ERROR: $error');
       });
 }
+
+void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
+  Clipboard.setData(ClipboardData(text: imageUrl));
+
+  context.showErrorSnackBar(
+    message: "Copiado al 📋",
+    messageColor: Colors.blueAccent,
+  );
+}
+
+// class YourWidget extends StatefulWidget {
+//   final String videoUrl;
+//
+//   YourWidget({required this.videoUrl});
+//
+//   @override
+//   _YourWidgetState createState() => _YourWidgetState();
+// }
+//
+// class _YourWidgetState extends State<YourWidget> {
+//   String? cachedImage;
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     _generateThumbnail();
+//   }
+//
+//   Future<void> _generateThumbnail() async {
+//     final thumbnailPath = (await getTemporaryDirectory()).path;
+//     final fileName = await VideoThumbnail.thumbnailFile(
+//       video: widget.videoUrl,
+//       thumbnailPath: thumbnailPath,
+//       imageFormat: ImageFormat.WEBP,
+//       maxHeight: 64,
+//       quality: 75,
+//     );
+//     print('Thumbnail Path: $fileName');
+//     setState(() {
+//       cachedImage = fileName;
+//     });
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Card(
+//       child: cachedImage != null
+//           ? CachedNetworkImage(
+//               imageUrl: cachedImage!,
+//               placeholder: (context, url) => CircularProgressIndicator(),
+//               errorWidget: (context, url, error) => Icon(Icons.error),
+//             )
+//           : CircularProgressIndicator(),
+//     );
+//   }
+// }
+//
+// Future<void> imgThumbnail(videoPath) async {
+//   Future thumbnailImg = VideoThumbnail.thumbnailFile(
+//     video: videoPath,
+//     thumbnailPath: (await getTemporaryDirectory()).path,
+//     imageFormat: ImageFormat.PNG,
+//     maxHeight:
+//         64, // specify the height of the thumbnail, let the width auto-scaled to keep the source aspect ratio
+//     quality: 75,
+//   );
+//   return thumbnailImg;
+// }
