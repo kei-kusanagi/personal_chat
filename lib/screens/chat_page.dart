@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:provider/provider.dart' as Prov;
 
@@ -13,6 +14,7 @@ import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../theme/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
@@ -89,7 +91,7 @@ class _ChatPageState extends State<ChatPage> {
       // appBar: AppBar(title: const Text('Chat')),
       appBar: AppBar(
         backgroundColor: pickerColor,
-        title: Text('Chat'),
+        title: const Text('Chat'),
         actions: [
           IconButton(
             iconSize: 20,
@@ -123,18 +125,19 @@ class _ChatPageState extends State<ChatPage> {
                 },
               );
             },
-            icon: Icon(Icons.color_lens),
+            icon: const Icon(Icons.color_lens),
           ),
           IconButton(
-            icon:
-                themeModel.isDark ? Icon(Icons.sunny) : Icon(Icons.nights_stay),
+            icon: themeModel.isDark
+                ? const Icon(Icons.sunny)
+                : const Icon(Icons.nights_stay),
             onPressed: toggleDarkMode,
           ),
           IconButton(
               onPressed: () {
                 Logout(context);
               },
-              icon: Icon(Icons.logout))
+              icon: const Icon(Icons.logout))
         ],
       ),
       body: StreamBuilder<List<Message>>(
@@ -205,13 +208,13 @@ class _MessageBarState extends State<_MessageBar> {
                 onPressed: () {
                   _submitCamera();
                 },
-                icon: Icon(Icons.camera_alt),
+                icon: const Icon(Icons.camera_alt),
               ),
               IconButton(
                 onPressed: () {
                   _submitFile();
                 },
-                icon: Icon(Icons.cloud_upload_outlined),
+                icon: const Icon(Icons.cloud_upload_outlined),
               ),
               Expanded(
                 child: TextFormField(
@@ -263,11 +266,9 @@ class _MessageBarState extends State<_MessageBar> {
         'content': text,
       });
     } on PostgrestException catch (Error) {
-      context.showErrorSnackBar(
-          message: Error.message, messageColor: Colors.red);
+      context.showSnackBar(message: Error.message, messageColor: Colors.red);
     } catch (_) {
-      context.showErrorSnackBar(
-          message: unexpectedErrorMessage, messageColor: Colors.red);
+      context.showErrorSnackBar(message: unexpectedErrorMessage);
     }
   }
 
@@ -292,19 +293,17 @@ class _MessageBarState extends State<_MessageBar> {
           'content':
               'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
         });
-        context.showErrorSnackBar(
-          message: "Archivo subido",
-          messageColor: Colors.greenAccent,
+        context.showSnackBar(
+          message: "📎 Archivo subido 📂",
+          messageColor: Theme.of(context).primaryColorLight,
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
           message: error.message,
-          messageColor: Colors.red,
         );
       } catch (e) {
         context.showErrorSnackBar(
           message: unexpectedErrorMessage,
-          messageColor: Colors.red,
         );
       }
     }
@@ -335,19 +334,17 @@ class _MessageBarState extends State<_MessageBar> {
           'content':
               'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
         });
-        context.showErrorSnackBar(
-          message: "Archivo subido",
-          messageColor: Colors.greenAccent,
+        context.showSnackBar(
+          message: "📷 Foto subida correctamente 🖼",
+          messageColor: Theme.of(context).primaryColor,
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
           message: error.message,
-          messageColor: Colors.red,
         );
       } catch (e) {
         context.showErrorSnackBar(
           message: unexpectedErrorMessage,
-          messageColor: Colors.red,
         );
       }
     }
@@ -399,85 +396,97 @@ class _ChatBubble extends StatelessWidget {
                     showDialog(
                         context: context,
                         builder: (context) => SingleChildScrollView(
-                              child: AlertDialog(
-                                insetPadding: EdgeInsets.only(),
-                                contentPadding: EdgeInsets.zero,
-                                content: FractionallySizedBox(
-                                  widthFactor: 0.90,
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        CachedNetworkImage(
-                                          imageUrl: message.content,
-                                          fit: BoxFit.contain,
-                                          width: containerWidth, // alto
-                                          height:
-                                              containerHeight / 1.2, // ancho
-                                        ),
-                                        SizedBox(height: 2),
-                                        Row(
+                              child: Stack(
+                                children: [
+                                  AlertDialog(
+                                    insetPadding: const EdgeInsets.only(),
+                                    contentPadding: EdgeInsets.zero,
+                                    content: FractionallySizedBox(
+                                      widthFactor: 0.90,
+                                      child: Center(
+                                        child: Column(
                                           mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            IconButton(
-                                              icon: Icon(Icons.open_in_browser),
-                                              tooltip: 'Abrir',
-                                              onPressed: () {
-                                                launchUrl(_url);
-                                                Navigator.of(context).pop();
-                                              },
+                                            CachedNetworkImage(
+                                              imageUrl: message.content,
+                                              fit: BoxFit.contain,
+                                              width: containerWidth, // alto
+                                              height: containerHeight /
+                                                  1.2, // ancho
                                             ),
-                                            IconButton(
-                                              icon: Icon(Icons.copy),
-                                              onPressed: () {
-                                                isImageUrl
-                                                    ? copyImageUrlToClipboard(
-                                                        context,
-                                                        _url.toString())
-                                                    : context.showErrorSnackBar(
-                                                        message:
-                                                            "No se puede copiar el archivo ❌",
-                                                        messageColor:
-                                                            Colors.red);
-                                                // Acción para copiar la imagen
-                                                // Coloca aquí el código que deseas ejecutar al tocar el botón "Copiar"
-                                                Navigator.of(context).pop();
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: Icon(Icons.download),
-                                              onPressed: () async {
-                                                if (Platform.isAndroid ||
-                                                    Platform.isIOS) {
-                                                  _downloadFile(
-                                                      message.content, context);
-                                                  // await launch(message.content);
-                                                  print(
-                                                      'mensaje tapeado en Android');
-                                                } else {
-                                                  await launch(message.content);
+                                            const SizedBox(height: 2),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(
+                                                      Icons.open_in_browser),
+                                                  tooltip: 'Abrir',
+                                                  onPressed: () {
+                                                    launchUrl(_url);
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(Icons.copy),
+                                                  onPressed: () {
+                                                    isImageUrl
+                                                        ? copyImageUrlToClipboard(
+                                                            context,
+                                                            _url.toString())
+                                                        : context.showErrorSnackBar(
+                                                            message:
+                                                                "No se puede copiar el archivo ❌");
+                                                    Navigator.of(context).pop();
+                                                  },
+                                                ),
+                                                IconButton(
+                                                  icon: const Icon(
+                                                      Icons.download),
+                                                  onPressed: () async {
+                                                    if (Platform.isAndroid ||
+                                                        Platform.isIOS) {
+                                                      _downloadFile(
+                                                          message.content,
+                                                          context);
+                                                      // await launch(message.content);
+                                                      print(
+                                                          'mensaje tapeado en Android');
+                                                    } else {
+                                                      await launch(
+                                                          message.content);
 
-                                                  print(
-                                                      'mensaje tapeado en Windows');
-                                                }
-                                                Navigator.of(context).pop();
-                                                context.showErrorSnackBar(
-                                                  message:
-                                                      "📎 Descargado en la galeria 🗂",
-                                                  messageColor:
-                                                      Colors.greenAccent,
-                                                );
-                                              },
+                                                      print(
+                                                          'mensaje tapeado en Windows');
+                                                    }
+                                                    Navigator.of(context).pop();
+                                                    context.showSnackBar(
+                                                      message:
+                                                          "📎 Descargado en la galeria 🗂",
+                                                      messageColor:
+                                                          Theme.of(context)
+                                                              .dividerColor,
+                                                    );
+                                                  },
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  IconButton(
+                                    icon: Icon(Icons.arrow_back_ios),
+                                    // color: Colors.white70,
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                  ),
+                                ],
                               ),
                             ));
                   },
@@ -485,10 +494,37 @@ class _ChatBubble extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: message.content,
                       placeholder: (context, url) =>
-                          CircularProgressIndicator(),
+                          const CircularProgressIndicator(),
                       errorWidget: (context, url, error) =>
-                          Icon(Icons.video_collection_rounded),
-                      // YourWidget(videoUrl: message.content),
+                          FutureBuilder<String?>(
+                        future: videoThumbnail(message.content),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const CircularProgressIndicator();
+                          } else if (snapshot.hasError ||
+                              snapshot.data == null) {
+                            return const Text('Error al cargar el thumbnail');
+                          } else {
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Image.file(
+                                  File(snapshot.data!),
+                                  fit: BoxFit.cover,
+                                  width: 200,
+                                  height: 200,
+                                ),
+                                const Icon(
+                                  Icons.play_circle_filled,
+                                  color: Colors.white70,
+                                  size: 50,
+                                ),
+                              ],
+                            );
+                          }
+                        },
+                      ),
                     ),
                   ),
                 )
@@ -527,67 +563,20 @@ void _downloadFile(String url, context) async {
 void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
   Clipboard.setData(ClipboardData(text: imageUrl));
 
-  context.showErrorSnackBar(
+  context.showSnackBar(
     message: "Copiado al 📋",
     messageColor: Colors.blueAccent,
   );
 }
 
-// class YourWidget extends StatefulWidget {
-//   final String videoUrl;
-//
-//   YourWidget({required this.videoUrl});
-//
-//   @override
-//   _YourWidgetState createState() => _YourWidgetState();
-// }
-//
-// class _YourWidgetState extends State<YourWidget> {
-//   String? cachedImage;
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//     _generateThumbnail();
-//   }
-//
-//   Future<void> _generateThumbnail() async {
-//     final thumbnailPath = (await getTemporaryDirectory()).path;
-//     final fileName = await VideoThumbnail.thumbnailFile(
-//       video: widget.videoUrl,
-//       thumbnailPath: thumbnailPath,
-//       imageFormat: ImageFormat.WEBP,
-//       maxHeight: 64,
-//       quality: 75,
-//     );
-//     print('Thumbnail Path: $fileName');
-//     setState(() {
-//       cachedImage = fileName;
-//     });
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Card(
-//       child: cachedImage != null
-//           ? CachedNetworkImage(
-//               imageUrl: cachedImage!,
-//               placeholder: (context, url) => CircularProgressIndicator(),
-//               errorWidget: (context, url, error) => Icon(Icons.error),
-//             )
-//           : CircularProgressIndicator(),
-//     );
-//   }
-// }
-//
-// Future<void> imgThumbnail(videoPath) async {
-//   Future thumbnailImg = VideoThumbnail.thumbnailFile(
-//     video: videoPath,
-//     thumbnailPath: (await getTemporaryDirectory()).path,
-//     imageFormat: ImageFormat.PNG,
-//     maxHeight:
-//         64, // specify the height of the thumbnail, let the width auto-scaled to keep the source aspect ratio
-//     quality: 75,
-//   );
-//   return thumbnailImg;
-// }
+Future<String?> videoThumbnail(path) async {
+  final fileName = await VideoThumbnail.thumbnailFile(
+    video: path,
+    thumbnailPath: (await getTemporaryDirectory()).path,
+    imageFormat: ImageFormat.PNG,
+    maxHeight:
+        400, // specify the height of the thumbnail, let the width auto-scaled to keep the source aspect ratio
+    quality: 100,
+  );
+  return fileName;
+}

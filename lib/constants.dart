@@ -23,18 +23,20 @@ extension ShowSnackBar on BuildContext {
   /// Displays a basic snackbar
   void showSnackBar({
     required String message,
-    Color backgroundColor = Colors.white,
+    required Color messageColor,
   }) {
     ScaffoldMessenger.of(this).showSnackBar(SnackBar(
       content: Text(message),
-      backgroundColor: backgroundColor,
+      backgroundColor: messageColor,
     ));
   }
 
   /// Displays a red snackbar indicating error
-  void showErrorSnackBar(
-      {required String message, required Color messageColor}) {
-    showSnackBar(message: message, backgroundColor: messageColor);
+  void showErrorSnackBar({required String message}) {
+    showSnackBar(
+      message: message,
+      messageColor: Colors.red,
+    );
   }
 }
 

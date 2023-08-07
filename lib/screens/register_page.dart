@@ -42,11 +42,9 @@ class _RegisterPageState extends State<RegisterPage> {
       Navigator.of(context)
           .pushAndRemoveUntil(ChatPage.route(), (route) => false);
     } on AuthException catch (error) {
-      context.showErrorSnackBar(
-          message: error.message, messageColor: Colors.red);
+      context.showErrorSnackBar(message: error.message);
     } catch (error) {
-      context.showErrorSnackBar(
-          message: unexpectedErrorMessage, messageColor: Colors.red);
+      context.showErrorSnackBar(message: unexpectedErrorMessage);
     }
   }
 

@@ -31,11 +31,9 @@ class _LoginPageState extends State<LoginPage> {
       Navigator.of(context)
           .pushAndRemoveUntil(ChatPage.route(), (route) => false);
     } on AuthException catch (error) {
-      context.showErrorSnackBar(
-          message: error.message, messageColor: Colors.red);
+      context.showErrorSnackBar(message: error.message);
     } catch (_) {
-      context.showErrorSnackBar(
-          message: unexpectedErrorMessage, messageColor: Colors.red);
+      context.showErrorSnackBar(message: unexpectedErrorMessage);
     }
     if (mounted) {
       setState(() {
