@@ -394,101 +394,90 @@ class _ChatBubble extends StatelessWidget {
               ? GestureDetector(
                   onTap: () {
                     showDialog(
-                        context: context,
-                        builder: (context) => SingleChildScrollView(
-                              child: Stack(
+                      context: context,
+                      builder: (context) => SingleChildScrollView(
+                        child: AlertDialog(
+                          insetPadding: const EdgeInsets.only(),
+                          contentPadding: EdgeInsets.zero,
+                          content: FractionallySizedBox(
+                            widthFactor: 0.90,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  AlertDialog(
-                                    insetPadding: const EdgeInsets.only(),
-                                    contentPadding: EdgeInsets.zero,
-                                    content: FractionallySizedBox(
-                                      widthFactor: 0.90,
-                                      child: Center(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            CachedNetworkImage(
-                                              imageUrl: message.content,
-                                              fit: BoxFit.contain,
-                                              width: containerWidth, // alto
-                                              height: containerHeight /
-                                                  1.2, // ancho
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceEvenly,
-                                              children: [
-                                                IconButton(
-                                                  icon: const Icon(
-                                                      Icons.open_in_browser),
-                                                  tooltip: 'Abrir',
-                                                  onPressed: () {
-                                                    launchUrl(_url);
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(Icons.copy),
-                                                  onPressed: () {
-                                                    isImageUrl
-                                                        ? copyImageUrlToClipboard(
-                                                            context,
-                                                            _url.toString())
-                                                        : context.showErrorSnackBar(
-                                                            message:
-                                                                "No se puede copiar el archivo ❌");
-                                                    Navigator.of(context).pop();
-                                                  },
-                                                ),
-                                                IconButton(
-                                                  icon: const Icon(
-                                                      Icons.download),
-                                                  onPressed: () async {
-                                                    if (Platform.isAndroid ||
-                                                        Platform.isIOS) {
-                                                      _downloadFile(
-                                                          message.content,
-                                                          context);
-                                                      // await launch(message.content);
-                                                      print(
-                                                          'mensaje tapeado en Android');
-                                                    } else {
-                                                      await launch(
-                                                          message.content);
-
-                                                      print(
-                                                          'mensaje tapeado en Windows');
-                                                    }
-                                                    Navigator.of(context).pop();
-                                                    context.showSnackBar(
-                                                      message:
-                                                          "📎 Descargado en la galeria 🗂",
-                                                      messageColor:
-                                                          Theme.of(context)
-                                                              .dividerColor,
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                  Align(
+                                    alignment: Alignment.topLeft,
+                                    child: IconButton(
+                                      icon: Icon(Icons.arrow_back_ios),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: Icon(Icons.arrow_back_ios),
-                                    // color: Colors.white70,
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
+                                  CachedNetworkImage(
+                                    imageUrl: message.content,
+                                    fit: BoxFit.contain,
+                                    width: containerWidth, // alto
+                                    height: containerHeight / 1.2, // ancho
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.open_in_browser),
+                                        tooltip: 'Abrir',
+                                        onPressed: () {
+                                          launchUrl(_url);
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.copy),
+                                        onPressed: () {
+                                          isImageUrl
+                                              ? copyImageUrlToClipboard(
+                                                  context, _url.toString())
+                                              : context.showErrorSnackBar(
+                                                  message:
+                                                      "No se puede copiar el archivo ❌");
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.download),
+                                        onPressed: () async {
+                                          if (Platform.isAndroid ||
+                                              Platform.isIOS) {
+                                            _downloadFile(
+                                                message.content, context);
+                                            // await launch(message.content);
+                                            print('mensaje tapeado en Android');
+                                          } else {
+                                            await launch(message.content);
+
+                                            print('mensaje tapeado en Windows');
+                                          }
+                                          Navigator.of(context).pop();
+                                          context.showSnackBar(
+                                            message:
+                                                "📎 Descargado en la galeria 🗂",
+                                            messageColor:
+                                                Theme.of(context).dividerColor,
+                                          );
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ));
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
                   },
                   child: Card(
                     child: CachedNetworkImage(
@@ -578,5 +567,6 @@ Future<String?> videoThumbnail(path) async {
         400, // specify the height of the thumbnail, let the width auto-scaled to keep the source aspect ratio
     quality: 100,
   );
+  print(fileName);
   return fileName;
 }
