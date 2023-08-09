@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -257,6 +258,8 @@ class _MessageBarState extends State<_MessageBar> {
     final text = _textController.text;
     final myUserId = supabase.auth.currentUser!.id;
     if (text.isEmpty) {
+      context.showSnackBar(
+          message: 'Escribe un mensaje', messageColor: Colors.yellow);
       return;
     }
     _textController.clear();
@@ -264,35 +267,107 @@ class _MessageBarState extends State<_MessageBar> {
       await supabase.from('messages').insert({
         'profile_id': myUserId,
         'content': text,
+        'file_path': '',
       });
     } on PostgrestException catch (Error) {
-      context.showSnackBar(message: Error.message, messageColor: Colors.red);
+      context.showErrorSnackBar(message: Error.message);
     } catch (_) {
       context.showErrorSnackBar(message: unexpectedErrorMessage);
     }
   }
+  // FutureBuilder<String?>(
+  //   future: videoThumbnail(supabase_file_path),
+  //   builder: (context, snapshot) {
+  //     if (snapshot.connectionState == ConnectionState.waiting) {
+  //       return const CircularProgressIndicator();
+  //     } else if (snapshot.hasError || snapshot.data == null) {
+  //       return const Text('Error al cargar el thumbnail');
+  //     } else {
+  //       thumbnail_file_path = snapshot.data!;
+  //       return Stack(
+  //         alignment: Alignment.center,
+  //         children: [
+  //           Image.file(
+  //             File(snapshot.data!),
+  //             fit: BoxFit.cover,
+  //             width: 200,
+  //             height: 200,
+  //           ),
+  //           const Icon(
+  //             Icons.play_circle_filled,
+  //             color: Colors.white70,
+  //             size: 50,
+  //           ),
+  //         ],
+  //       );
+  //     }
+  //   },
+  // );
 
   void _submitFile() async {
-    String file_path = '';
+    String supabase_file_path = '';
+    String thumbnail_file_path = '';
+    String _pickedFileName = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     var pickedFile = await FilePicker.platform.pickFiles(allowMultiple: false);
+    // bool isImageUrl =
+    //     Uri.tryParse(pickedFile!.files.first.path!)?.isAbsolute ?? true;
+
     if (pickedFile != null) {
       final file = File(pickedFile.files.first.path!);
       await client.storage
           .from('Files')
           .upload(pickedFile.files.first.name, file)
           .then((response) {
-        file_path = response;
-        print(file_path);
+        supabase_file_path = response;
       });
+
+      String url = supabase_file_path;
+      bool _isVideo(String url) {
+        final videoExtensions = [
+          '.mp4',
+          '.avi',
+          '.mov',
+          '.mkv',
+          '.flv',
+          '.wmv'
+        ]; // Agrega más extensiones si es necesario
+        final fileExtension = url.toLowerCase();
+
+        return videoExtensions
+            .any((extension) => fileExtension.endsWith(extension));
+      }
+
+      bool isVideoLink = _isVideo(supabase_file_path);
+      if (isVideoLink) {
+        String? thumbnailPath = await videoThumbnail(
+            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabase_file_path');
+        final miniatura = File(thumbnailPath!);
+        _pickedFileName = pickedFile.files.first.name;
+
+        _pickedFileName =
+            _pickedFileName.substring(0, _pickedFileName.lastIndexOf('.'));
+
+        await client.storage
+            .from('Files')
+            .upload('$_pickedFileName.png', miniatura)
+            .then((response) {
+          thumbnail_file_path =
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
+        });
+      } else {
+        thumbnail_file_path = '';
+      }
 
       try {
         await supabase.from('messages').insert({
           'profile_id': myUserId,
           'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabase_file_path',
+          'file_path': thumbnail_file_path,
         });
+
         context.showSnackBar(
           message: "📎 Archivo subido 📂",
           messageColor: Theme.of(context).primaryColorLight,
@@ -331,7 +406,8 @@ class _MessageBarState extends State<_MessageBar> {
       try {
         await supabase.from('messages').insert({
           'profile_id': myUserId,
-          'content':
+          'content': '',
+          'file_path':
               'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
         });
         context.showSnackBar(
@@ -366,7 +442,7 @@ class _ChatBubble extends StatelessWidget {
     Size screenSize = MediaQuery.of(context).size;
     double containerWidth = screenSize.width * 0.95;
     double containerHeight = screenSize.height * 0.95;
-    bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
+    bool isImageUrl = Uri.tryParse(message.filePath)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     final Uri _url = Uri.parse(message.content);
 
@@ -416,7 +492,7 @@ class _ChatBubble extends StatelessWidget {
                                     ),
                                   ),
                                   CachedNetworkImage(
-                                    imageUrl: message.content,
+                                    imageUrl: message.filePath,
                                     fit: BoxFit.contain,
                                     width: containerWidth, // alto
                                     height: containerHeight / 1.2, // ancho
@@ -456,7 +532,7 @@ class _ChatBubble extends StatelessWidget {
                                             // await launch(message.content);
                                             print('mensaje tapeado en Android');
                                           } else {
-                                            await launch(message.content);
+                                            await launchUrl(_url);
 
                                             print('mensaje tapeado en Windows');
                                           }
@@ -481,39 +557,12 @@ class _ChatBubble extends StatelessWidget {
                   },
                   child: Card(
                     child: CachedNetworkImage(
-                      imageUrl: message.content,
+                      width: containerWidth / 3, //ancho
+                      height: containerHeight / 5, // alto
+                      imageUrl: message.filePath,
                       placeholder: (context, url) =>
                           const CircularProgressIndicator(),
-                      errorWidget: (context, url, error) =>
-                          FutureBuilder<String?>(
-                        future: videoThumbnail(message.content),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const CircularProgressIndicator();
-                          } else if (snapshot.hasError ||
-                              snapshot.data == null) {
-                            return const Text('Error al cargar el thumbnail');
-                          } else {
-                            return Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Image.file(
-                                  File(snapshot.data!),
-                                  fit: BoxFit.cover,
-                                  width: 200,
-                                  height: 200,
-                                ),
-                                const Icon(
-                                  Icons.play_circle_filled,
-                                  color: Colors.white70,
-                                  size: 50,
-                                ),
-                              ],
-                            );
-                          }
-                        },
-                      ),
+                      errorWidget: (context, url, error) => Icon(Icons.error),
                     ),
                   ),
                 )
@@ -563,10 +612,10 @@ Future<String?> videoThumbnail(path) async {
     video: path,
     thumbnailPath: (await getTemporaryDirectory()).path,
     imageFormat: ImageFormat.PNG,
-    maxHeight:
-        400, // specify the height of the thumbnail, let the width auto-scaled to keep the source aspect ratio
+    maxHeight: 500,
+    maxWidth: 500,
     quality: 100,
   );
-  print(fileName);
+  print('EL PUTO PATH DE LA PINCHE PUTA HIJA DE PERRA MINIATURA$fileName');
   return fileName;
 }
