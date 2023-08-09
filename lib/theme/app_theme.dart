@@ -9,7 +9,7 @@ class ThemeModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _isDark = true;
+  bool _isDark = false;
   bool get isDark => _isDark;
 
   set isDark(bool newDarkLigth) {

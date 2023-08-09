@@ -21,19 +21,22 @@ const unexpectedErrorMessage = 'Unexpected error occurred.';
 /// Set of extension methods to easily display a snackbar
 extension ShowSnackBar on BuildContext {
   /// Displays a basic snackbar
+
   void showSnackBar({
+    required BuildContext context,
     required String message,
     required Color messageColor,
   }) {
-    ScaffoldMessenger.of(this).showSnackBar(SnackBar(
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
       backgroundColor: messageColor,
     ));
   }
 
   /// Displays a red snackbar indicating error
-  void showErrorSnackBar({required String message}) {
+  void showErrorSnackBar({context, required String message}) {
     showSnackBar(
+      context: context,
       message: message,
       messageColor: Colors.red,
     );

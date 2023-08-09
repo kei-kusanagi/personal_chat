@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:http/http.dart' as http;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -259,7 +258,9 @@ class _MessageBarState extends State<_MessageBar> {
     final myUserId = supabase.auth.currentUser!.id;
     if (text.isEmpty) {
       context.showSnackBar(
-          message: 'Escribe un mensaje', messageColor: Colors.yellow);
+          message: 'Escribe un mensaje',
+          messageColor: Colors.yellow,
+          context: context);
       return;
     }
     _textController.clear();
@@ -311,8 +312,6 @@ class _MessageBarState extends State<_MessageBar> {
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     var pickedFile = await FilePicker.platform.pickFiles(allowMultiple: false);
-    // bool isImageUrl =
-    //     Uri.tryParse(pickedFile!.files.first.path!)?.isAbsolute ?? true;
 
     if (pickedFile != null) {
       final file = File(pickedFile.files.first.path!);
@@ -323,7 +322,7 @@ class _MessageBarState extends State<_MessageBar> {
         supabase_file_path = response;
       });
 
-      String url = supabase_file_path;
+      // String url = supabase_file_path;
       bool _isVideo(String url) {
         final videoExtensions = [
           '.mp4',
@@ -357,7 +356,8 @@ class _MessageBarState extends State<_MessageBar> {
               'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
         });
       } else {
-        thumbnail_file_path = '';
+        thumbnail_file_path =
+            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabase_file_path';
       }
 
       try {
@@ -370,7 +370,8 @@ class _MessageBarState extends State<_MessageBar> {
 
         context.showSnackBar(
           message: "📎 Archivo subido 📂",
-          messageColor: Theme.of(context).primaryColorLight,
+          messageColor: Theme.of(context).primaryColor,
+          context: context,
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
@@ -406,13 +407,15 @@ class _MessageBarState extends State<_MessageBar> {
       try {
         await supabase.from('messages').insert({
           'profile_id': myUserId,
-          'content': '',
+          'content':
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
           'file_path':
               'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
         });
         context.showSnackBar(
           message: "📷 Foto subida correctamente 🖼",
           messageColor: Theme.of(context).primaryColor,
+          context: context,
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
@@ -442,7 +445,7 @@ class _ChatBubble extends StatelessWidget {
     Size screenSize = MediaQuery.of(context).size;
     double containerWidth = screenSize.width * 0.95;
     double containerHeight = screenSize.height * 0.95;
-    bool isImageUrl = Uri.tryParse(message.filePath)?.isAbsolute ?? false;
+    bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     final Uri _url = Uri.parse(message.content);
 
@@ -492,7 +495,11 @@ class _ChatBubble extends StatelessWidget {
                                     ),
                                   ),
                                   CachedNetworkImage(
-                                    imageUrl: message.filePath,
+                                    imageUrl: message.filePath.isEmpty
+                                        ? message.content
+                                        : message.filePath,
+
+                                    // imageUrl: message.filePath,
                                     fit: BoxFit.contain,
                                     width: containerWidth, // alto
                                     height: containerHeight / 1.2, // ancho
@@ -527,22 +534,12 @@ class _ChatBubble extends StatelessWidget {
                                         onPressed: () async {
                                           if (Platform.isAndroid ||
                                               Platform.isIOS) {
+                                            Navigator.of(context).pop();
                                             _downloadFile(
-                                                message.content, context);
-                                            // await launch(message.content);
-                                            print('mensaje tapeado en Android');
+                                                context, message.content);
                                           } else {
                                             await launchUrl(_url);
-
-                                            print('mensaje tapeado en Windows');
                                           }
-                                          Navigator.of(context).pop();
-                                          context.showSnackBar(
-                                            message:
-                                                "📎 Descargado en la galeria 🗂",
-                                            messageColor:
-                                                Theme.of(context).dividerColor,
-                                          );
                                         },
                                       ),
                                     ],
@@ -559,7 +556,9 @@ class _ChatBubble extends StatelessWidget {
                     child: CachedNetworkImage(
                       width: containerWidth / 3, //ancho
                       height: containerHeight / 5, // alto
-                      imageUrl: message.filePath,
+                      imageUrl: message.filePath.isEmpty
+                          ? message.content
+                          : message.filePath,
                       placeholder: (context, url) =>
                           const CircularProgressIndicator(),
                       errorWidget: (context, url, error) => Icon(Icons.error),
@@ -587,15 +586,23 @@ class _ChatBubble extends StatelessWidget {
   }
 }
 
-void _downloadFile(String url, context) async {
-  FileDownloader.downloadFile(
-      url: url,
-      onDownloadCompleted: (String path) async {
-        print('el maldito path FILE DOWNLOADED TO PATH: $path');
-      },
-      onDownloadError: (String error) {
-        print('DOWNLOAD ERROR: $error');
-      });
+void _downloadFile(BuildContext context, String url) async {
+  String message;
+
+  await FileDownloader.downloadFile(
+    url: url,
+    onDownloadCompleted: (String path) {
+      context.showSnackBar(
+        message: 'Archivo guardado en la galeria 📂',
+        messageColor: Theme.of(context).primaryColor,
+        context: context,
+      );
+    },
+    onDownloadError: (String error) {
+      context.showErrorSnackBar(
+          message: '❌ Error al descargar el archivo: $error');
+    },
+  );
 }
 
 void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
@@ -604,6 +611,7 @@ void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
   context.showSnackBar(
     message: "Copiado al 📋",
     messageColor: Colors.blueAccent,
+    context: context,
   );
 }
 
@@ -616,6 +624,6 @@ Future<String?> videoThumbnail(path) async {
     maxWidth: 500,
     quality: 100,
   );
-  print('EL PUTO PATH DE LA PINCHE PUTA HIJA DE PERRA MINIATURA$fileName');
+
   return fileName;
 }
