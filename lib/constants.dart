@@ -23,13 +23,54 @@ extension ShowSnackBar on BuildContext {
   /// Displays a basic snackbar
 
   void showSnackBar({
-    required BuildContext context,
+    required context,
     required String message,
     required Color messageColor,
   }) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: messageColor,
+    ScaffoldMessenger.of(this).showSnackBar(SnackBar(
+      content: Stack(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            height: 90,
+            decoration: BoxDecoration(
+                color: messageColor,
+                borderRadius: const BorderRadius.all(Radius.circular(20))),
+            child: Center(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '😁 Listo...!',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  const Spacer(),
+                  Text(
+                    message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Align(
+          //   alignment: Alignment.topRight,
+          //   child: IconButton(
+          //     onPressed: () {
+          //       ScaffoldMessenger.of(this).hideCurrentSnackBar();
+          //     },
+          //     icon: Icon(
+          //       Icons.close,
+          //       color: Colors.white,
+          //     ),
+          //   ),
+          // ),
+        ],
+      ),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
     ));
   }
 

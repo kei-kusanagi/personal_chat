@@ -504,8 +504,15 @@ class _ChatBubble extends StatelessWidget {
                                           if (Platform.isAndroid ||
                                               Platform.isIOS) {
                                             Navigator.of(context).pop();
+
                                             _downloadFile(
                                                 context, message.content);
+                                            context.showSnackBar(
+                                                message:
+                                                    'Archivo guardado en la galeria 📂',
+                                                messageColor: Theme.of(context)
+                                                    .primaryColor,
+                                                context: context);
                                           } else {
                                             await launchUrl(_url);
                                           }
@@ -589,28 +596,33 @@ class _ChatBubble extends StatelessWidget {
 }
 
 void _downloadFile(BuildContext context, String url) async {
+  bool dounloadError = false;
+  var errorMessage;
   await FileDownloader.downloadFile(
     url: url,
     onDownloadCompleted: (String path) {
-      context.showSnackBar(
-        message: 'Archivo guardado en la galeria 📂',
-        messageColor: Theme.of(context).primaryColor,
-        context: context,
-      );
+      dounloadError = false;
     },
     onDownloadError: (String error) {
-      context.showErrorSnackBar(
-          message: '❌ Error al descargar el archivo: $error');
+      dounloadError = true;
+
+      errorMessage = error;
     },
   );
+  if (dounloadError) {
+    context.showErrorSnackBar(
+        message: '❌ Error al descargar el archivo: $errorMessage');
+  }
 }
 
 void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
+  final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+  Color pickerColor = themeModel.colorTheme;
   Clipboard.setData(ClipboardData(text: imageUrl));
 
   context.showSnackBar(
     message: "Copiado al 📋",
-    messageColor: Colors.blueAccent,
+    messageColor: pickerColor,
     context: context,
   );
 }
