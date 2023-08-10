@@ -43,7 +43,7 @@ extension ShowSnackBar on BuildContext {
   }
 }
 
-Logout(BuildContext context) {
+logout(BuildContext context) async {
   supabase.auth.signOut();
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(

@@ -6,6 +6,7 @@ import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
+// ignore: library_prefixes
 import 'package:provider/provider.dart' as Prov;
 
 import 'package:personal_messenger/models/message.dart';
@@ -109,7 +110,6 @@ class _ChatPageState extends State<ChatPage> {
                     ),
                     actions: <Widget>[
                       ElevatedButton(
-                        child: const Text('Got it'),
                         onPressed: () {
                           setState(() {
                             themeModel.colorTheme = pickerColor;
@@ -119,6 +119,7 @@ class _ChatPageState extends State<ChatPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: pickerColor,
                         ),
+                        child: const Text('Got it'),
                       ),
                     ],
                   );
@@ -135,7 +136,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
           IconButton(
               onPressed: () {
-                Logout(context);
+                logout(context);
               },
               icon: const Icon(Icons.logout))
         ],
@@ -276,38 +277,10 @@ class _MessageBarState extends State<_MessageBar> {
       context.showErrorSnackBar(message: unexpectedErrorMessage);
     }
   }
-  // FutureBuilder<String?>(
-  //   future: videoThumbnail(supabase_file_path),
-  //   builder: (context, snapshot) {
-  //     if (snapshot.connectionState == ConnectionState.waiting) {
-  //       return const CircularProgressIndicator();
-  //     } else if (snapshot.hasError || snapshot.data == null) {
-  //       return const Text('Error al cargar el thumbnail');
-  //     } else {
-  //       thumbnail_file_path = snapshot.data!;
-  //       return Stack(
-  //         alignment: Alignment.center,
-  //         children: [
-  //           Image.file(
-  //             File(snapshot.data!),
-  //             fit: BoxFit.cover,
-  //             width: 200,
-  //             height: 200,
-  //           ),
-  //           const Icon(
-  //             Icons.play_circle_filled,
-  //             color: Colors.white70,
-  //             size: 50,
-  //           ),
-  //         ],
-  //       );
-  //     }
-  //   },
-  // );
 
   void _submitFile() async {
-    String supabase_file_path = '';
-    String thumbnail_file_path = '';
+    String supabaseFilePath = '';
+    String thumbnailFilePath = '';
     String _pickedFileName = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
@@ -319,10 +292,9 @@ class _MessageBarState extends State<_MessageBar> {
           .from('Files')
           .upload(pickedFile.files.first.name, file)
           .then((response) {
-        supabase_file_path = response;
+        supabaseFilePath = response;
       });
 
-      // String url = supabase_file_path;
       bool _isVideo(String url) {
         final videoExtensions = [
           '.mp4',
@@ -338,10 +310,10 @@ class _MessageBarState extends State<_MessageBar> {
             .any((extension) => fileExtension.endsWith(extension));
       }
 
-      bool isVideoLink = _isVideo(supabase_file_path);
+      bool isVideoLink = _isVideo(supabaseFilePath);
       if (isVideoLink) {
         String? thumbnailPath = await videoThumbnail(
-            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabase_file_path');
+            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath');
         final miniatura = File(thumbnailPath!);
         _pickedFileName = pickedFile.files.first.name;
 
@@ -352,20 +324,19 @@ class _MessageBarState extends State<_MessageBar> {
             .from('Files')
             .upload('$_pickedFileName.png', miniatura)
             .then((response) {
-          thumbnail_file_path =
+          thumbnailFilePath =
               'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
         });
       } else {
-        thumbnail_file_path =
-            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabase_file_path';
+        thumbnailFilePath = '';
       }
 
       try {
         await supabase.from('messages').insert({
           'profile_id': myUserId,
           'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabase_file_path',
-          'file_path': thumbnail_file_path,
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath',
+          'file_path': thumbnailFilePath,
         });
 
         context.showSnackBar(
@@ -389,7 +360,7 @@ class _MessageBarState extends State<_MessageBar> {
     final ImagePicker picker = ImagePicker();
     final XFile? photo = await picker.pickImage(source: ImageSource.camera);
 
-    String file_path = '';
+    String filePath = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
 
@@ -400,17 +371,16 @@ class _MessageBarState extends State<_MessageBar> {
           .from('Files')
           .upload(photo.name, imageFile)
           .then((response) {
-        file_path = response;
-        print(file_path);
+        filePath = response;
+        print(filePath);
       });
 
       try {
         await supabase.from('messages').insert({
           'profile_id': myUserId,
           'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
-          'file_path':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$file_path',
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
+          'file_path': '',
         });
         context.showSnackBar(
           message: "📷 Foto subida correctamente 🖼",
@@ -499,8 +469,7 @@ class _ChatBubble extends StatelessWidget {
                                         ? message.content
                                         : message.filePath,
 
-                                    // imageUrl: message.filePath,
-                                    fit: BoxFit.contain,
+                                    fit: BoxFit.cover,
                                     width: containerWidth, // alto
                                     height: containerHeight / 1.2, // ancho
                                   ),
@@ -553,16 +522,49 @@ class _ChatBubble extends StatelessWidget {
                     );
                   },
                   child: Card(
-                    child: CachedNetworkImage(
-                      width: containerWidth / 3, //ancho
-                      height: containerHeight / 5, // alto
-                      imageUrl: message.filePath.isEmpty
-                          ? message.content
-                          : message.filePath,
-                      placeholder: (context, url) =>
-                          const CircularProgressIndicator(),
-                      errorWidget: (context, url, error) => Icon(Icons.error),
-                    ),
+                    child: message.filePath.isEmpty
+                        ? CachedNetworkImage(
+                            fit: BoxFit.cover,
+                            width: containerWidth / 3,
+                            height: containerHeight / 5,
+                            imageUrl: message.content,
+                            placeholder: (context, url) =>
+                                const CircularProgressIndicator(),
+                            errorWidget: (context, url, error) => Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                      onPressed: () async {
+                                        if (Platform.isAndroid ||
+                                            Platform.isIOS) {
+                                          _downloadFile(
+                                              context, message.content);
+                                        } else {
+                                          await launchUrl(_url);
+                                        }
+                                      },
+                                      iconSize: 80,
+                                      icon: Icon(Icons.file_present_rounded),
+                                    ),
+                                    Text('Descargar archivo'),
+                                  ],
+                                ))
+                        : Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CachedNetworkImage(
+                                imageUrl: message.filePath,
+                                fit: BoxFit.cover,
+                                width: containerWidth / 3,
+                                height: containerHeight / 5,
+                              ),
+                              const Icon(
+                                Icons.play_circle_filled,
+                                color: Colors.white70,
+                                size: 50,
+                              ),
+                            ],
+                          ),
                   ),
                 )
               : Text(message.content),
@@ -587,8 +589,6 @@ class _ChatBubble extends StatelessWidget {
 }
 
 void _downloadFile(BuildContext context, String url) async {
-  String message;
-
   await FileDownloader.downloadFile(
     url: url,
     onDownloadCompleted: (String path) {

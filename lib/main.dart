@@ -15,13 +15,13 @@ void main() async {
   runApp(
     provider.ChangeNotifierProvider(
       create: (_) => ThemeModel(),
-      child: MyApp(),
+      child: const MyApp(),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
