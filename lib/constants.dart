@@ -23,11 +23,12 @@ extension ShowSnackBar on BuildContext {
   /// Displays a basic snackbar
 
   void showSnackBar({
-    required context,
+    // required context,
     required String message,
     required Color messageColor,
   }) {
     ScaffoldMessenger.of(this).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 1),
       content: Stack(
         children: [
           Container(
@@ -54,18 +55,17 @@ extension ShowSnackBar on BuildContext {
               ),
             ),
           ),
-          // Align(
-          //   alignment: Alignment.topRight,
-          //   child: IconButton(
-          //     onPressed: () {
-          //       ScaffoldMessenger.of(this).hideCurrentSnackBar();
-          //     },
-          //     icon: Icon(
-          //       Icons.close,
-          //       color: Colors.white,
-          //     ),
-          //   ),
-          // ),
+          const Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: Icon(
+                Icons.swipe_down,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
         ],
       ),
       behavior: SnackBarBehavior.floating,
@@ -77,7 +77,7 @@ extension ShowSnackBar on BuildContext {
   /// Displays a red snackbar indicating error
   void showErrorSnackBar({context, required String message}) {
     showSnackBar(
-      context: context,
+      // context: context,
       message: message,
       messageColor: Colors.red,
     );

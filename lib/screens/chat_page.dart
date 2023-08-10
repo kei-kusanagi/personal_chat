@@ -251,17 +251,21 @@ class _MessageBarState extends State<_MessageBar> {
   @override
   void dispose() {
     _textController.dispose();
+
     super.dispose();
   }
 
   void _submitMessage() async {
+    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+    Color pickerColor = themeModel.colorTheme;
     final text = _textController.text;
     final myUserId = supabase.auth.currentUser!.id;
     if (text.isEmpty) {
       context.showSnackBar(
-          message: 'Escribe un mensaje',
-          messageColor: Colors.yellow,
-          context: context);
+        message: 'Escribe un mensaje',
+        messageColor: pickerColor,
+        // context: context,
+      );
       return;
     }
     _textController.clear();
@@ -285,6 +289,8 @@ class _MessageBarState extends State<_MessageBar> {
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     var pickedFile = await FilePicker.platform.pickFiles(allowMultiple: false);
+    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+    Color pickerColor = themeModel.colorTheme;
 
     if (pickedFile != null) {
       final file = File(pickedFile.files.first.path!);
@@ -341,8 +347,8 @@ class _MessageBarState extends State<_MessageBar> {
 
         context.showSnackBar(
           message: "📎 Archivo subido 📂",
-          messageColor: Theme.of(context).primaryColor,
-          context: context,
+          messageColor: pickerColor,
+          // context: context,
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
@@ -357,6 +363,8 @@ class _MessageBarState extends State<_MessageBar> {
   }
 
   void _submitCamera() async {
+    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+    Color pickerColor = themeModel.colorTheme;
     final ImagePicker picker = ImagePicker();
     final XFile? photo = await picker.pickImage(source: ImageSource.camera);
 
@@ -372,7 +380,7 @@ class _MessageBarState extends State<_MessageBar> {
           .upload(photo.name, imageFile)
           .then((response) {
         filePath = response;
-        print(filePath);
+        // print(filePath);
       });
 
       try {
@@ -384,8 +392,8 @@ class _MessageBarState extends State<_MessageBar> {
         });
         context.showSnackBar(
           message: "📷 Foto subida correctamente 🖼",
-          messageColor: Theme.of(context).primaryColor,
-          context: context,
+          messageColor: pickerColor,
+          // context: context,
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
@@ -418,6 +426,8 @@ class _ChatBubble extends StatelessWidget {
     bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     final Uri _url = Uri.parse(message.content);
+
+    Color pickerColor = themeModel.colorTheme;
 
     List<Widget> chatContents = [
       if (!message.isMine)
@@ -489,13 +499,16 @@ class _ChatBubble extends StatelessWidget {
                                       IconButton(
                                         icon: const Icon(Icons.copy),
                                         onPressed: () {
-                                          isImageUrl
-                                              ? copyImageUrlToClipboard(
-                                                  context, _url.toString())
-                                              : context.showErrorSnackBar(
-                                                  message:
-                                                      "No se puede copiar el archivo ❌");
-                                          Navigator.of(context).pop();
+                                          if (isImageUrl) {
+                                            copyImageUrlToClipboard(
+                                                context, _url.toString());
+                                            Navigator.of(context).pop();
+                                          } else {
+                                            context.showErrorSnackBar(
+                                                message:
+                                                    "No se puede copiar el archivo ❌");
+                                            Navigator.of(context).pop();
+                                          }
                                         },
                                       ),
                                       IconButton(
@@ -508,11 +521,12 @@ class _ChatBubble extends StatelessWidget {
                                             _downloadFile(
                                                 context, message.content);
                                             context.showSnackBar(
-                                                message:
-                                                    'Archivo guardado en la galeria 📂',
-                                                messageColor: Theme.of(context)
-                                                    .primaryColor,
-                                                context: context);
+                                              message:
+                                                  'Archivo guardado en la galeria 📂',
+                                              messageColor: Theme.of(context)
+                                                  .primaryColor,
+                                              // context: context,
+                                            );
                                           } else {
                                             await launchUrl(_url);
                                           }
@@ -615,7 +629,7 @@ void _downloadFile(BuildContext context, String url) async {
   }
 }
 
-void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
+void copyImageUrlToClipboard(BuildContext context, imageUrl) {
   final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
   Color pickerColor = themeModel.colorTheme;
   Clipboard.setData(ClipboardData(text: imageUrl));
@@ -623,7 +637,7 @@ void copyImageUrlToClipboard(BuildContext context, imageUrl) async {
   context.showSnackBar(
     message: "Copiado al 📋",
     messageColor: pickerColor,
-    context: context,
+    // context: context,
   );
 }
 
