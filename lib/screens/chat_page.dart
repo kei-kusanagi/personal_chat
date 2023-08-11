@@ -1,4 +1,5 @@
 import 'dart:io';
+// import 'package:media_kit_video/media_kit_video.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -14,7 +15,7 @@ import 'package:personal_messenger/models/profile.dart';
 import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../theme/app_theme.dart';
@@ -408,7 +409,7 @@ class _MessageBarState extends State<_MessageBar> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
+class _ChatBubble extends StatefulWidget {
   const _ChatBubble({
     Key? key,
     required this.message,
@@ -419,22 +420,27 @@ class _ChatBubble extends StatelessWidget {
   final Profile? profile;
 
   @override
+  State<_ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<_ChatBubble> {
+  @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
     double containerWidth = screenSize.width * 0.95;
     double containerHeight = screenSize.height * 0.95;
-    bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
+    bool isImageUrl = Uri.tryParse(widget.message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-    final Uri _url = Uri.parse(message.content);
-
-    Color pickerColor = themeModel.colorTheme;
+    final Uri _url = Uri.parse(widget.message.content);
+    late VideoPlayerController _controller;
+    String videoLink = '';
 
     List<Widget> chatContents = [
-      if (!message.isMine)
+      if (!widget.message.isMine)
         CircleAvatar(
-          child: profile == null
+          child: widget.profile == null
               ? preloader
-              : Text(profile!.username.substring(0, 2)),
+              : Text(widget.profile!.username.substring(0, 2)),
         ),
       const SizedBox(width: 12),
       Flexible(
@@ -444,137 +450,272 @@ class _ChatBubble extends StatelessWidget {
             horizontal: 12,
           ),
           decoration: BoxDecoration(
-            color: message.isMine
+            color: widget.message.isMine
                 ? themeModel.colorTheme
                 : Theme.of(context).focusColor,
             borderRadius: BorderRadius.circular(8),
           ),
           child: isImageUrl
-              ? GestureDetector(
+              ?
+              // GestureDetector(
+              //         onTap: () {
+              //           showDialog(
+              //             context: context,
+              //             builder: (context) => SingleChildScrollView(
+              //               child: AlertDialog(
+              //                 insetPadding: const EdgeInsets.only(),
+              //                 contentPadding: EdgeInsets.zero,
+              //                 content: FractionallySizedBox(
+              //                   widthFactor: 0.90,
+              //                   child: Center(
+              //                     child: Column(
+              //                       mainAxisAlignment: MainAxisAlignment.center,
+              //                       mainAxisSize: MainAxisSize.min,
+              //                       children: [
+              //                         Align(
+              //                           alignment: Alignment.topLeft,
+              //                           child: IconButton(
+              //                             icon: Icon(Icons.arrow_back_ios),
+              //                             onPressed: () {
+              //                               Navigator.of(context).pop();
+              //                             },
+              //                           ),
+              //                         ),
+              //                         if (message.filePath.isEmpty)
+              //                           CachedNetworkImage(
+              //                             imageUrl: message.content,
+              //                             fit: BoxFit.cover,
+              //                             width: containerWidth,
+              //                             height: containerHeight / 1.2,
+              //                           )
+              //                         else
+              //                           Column(
+              //                             mainAxisAlignment:
+              //                                 MainAxisAlignment.center,
+              //                             children: [
+              //                               AspectRatio(
+              //                                 aspectRatio: 16 /
+              //                                     9, // Ajusta este valor según tus necesidades
+              //                                 child: VideoPlayer(_controller),
+              //                               ),
+              //                               Row(
+              //                                 mainAxisAlignment:
+              //                                     MainAxisAlignment.center,
+              //                                 children: [
+              //                                   IconButton(
+              //                                     onPressed: () {
+              //                                       setState(() {
+              //                                         if (_controller
+              //                                             .value.isPlaying) {
+              //                                           _controller.pause();
+              //                                         } else {
+              //                                           _controller.play();
+              //                                         }
+              //                                       });
+              //                                     },
+              //                                     icon: Icon(
+              //                                       _controller.value.isPlaying
+              //                                           ? Icons.pause
+              //                                           : Icons.play_arrow,
+              //                                     ),
+              //                                   ),
+              //                                   IconButton(
+              //                                     onPressed: () {
+              //                                       setState(() {
+              //                                         _controller.pause();
+              //                                         _controller
+              //                                             .seekTo(Duration.zero);
+              //                                       });
+              //                                     },
+              //                                     icon: Icon(Icons.stop),
+              //                                   ),
+              //                                 ],
+              //                               ),
+              //                             ],
+              //                           ),
+              //                         SizedBox(height: 2),
+              //                         Row(
+              //                           mainAxisAlignment:
+              //                               MainAxisAlignment.spaceEvenly,
+              //                           children: [
+              //                             IconButton(
+              //                               icon: Icon(Icons.open_in_browser),
+              //                               tooltip: 'Abrir',
+              //                               onPressed: () {
+              //                                 launchUrl(_url);
+              //                                 Navigator.of(context).pop();
+              //                               },
+              //                             ),
+              //                             IconButton(
+              //                               icon: Icon(Icons.copy),
+              //                               onPressed: () {
+              //                                 if (isImageUrl) {
+              //                                   copyImageUrlToClipboard(
+              //                                       context, _url.toString());
+              //                                   Navigator.of(context).pop();
+              //                                 } else {
+              //                                   context.showErrorSnackBar(
+              //                                       message:
+              //                                           "No se puede copiar el archivo ❌");
+              //                                   Navigator.of(context).pop();
+              //                                 }
+              //                               },
+              //                             ),
+              //                             IconButton(
+              //                               icon: Icon(Icons.download),
+              //                               onPressed: () async {
+              //                                 if (Platform.isAndroid ||
+              //                                     Platform.isIOS) {
+              //                                   Navigator.of(context).pop();
+              //                                   _downloadFile(
+              //                                       context, message.content);
+              //                                   context.showSnackBar(
+              //                                     message:
+              //                                         'Archivo guardado en la galería 📂',
+              //                                     messageColor: Theme.of(context)
+              //                                         .primaryColor,
+              //                                   );
+              //                                 } else {
+              //                                   await launchUrl(_url);
+              //                                 }
+              //                               },
+              //                             ),
+              //                           ],
+              //                         ),
+              //                       ],
+              //                     ),
+              //                   ),
+              //                 ),
+              //               ),
+              //             ),
+              //           );
+              //         },
+              //         child: Card(
+              //           child: message.filePath.isEmpty
+              //               ? CachedNetworkImage(
+              //                   fit: BoxFit.cover,
+              //                   width: containerWidth / 3,
+              //                   height: containerHeight / 5,
+              //                   imageUrl: message.content,
+              //                   placeholder: (context, url) =>
+              //                       const CircularProgressIndicator(),
+              //                   errorWidget: (context, url, error) => Column(
+              //                     mainAxisAlignment: MainAxisAlignment.center,
+              //                     children: [
+              //                       IconButton(
+              //                         onPressed: () async {
+              //                           if (Platform.isAndroid || Platform.isIOS) {
+              //                             _downloadFile(context, message.content);
+              //                           } else {
+              //                             await launchUrl(_url);
+              //                           }
+              //                         },
+              //                         iconSize: 80,
+              //                         icon: Icon(Icons.file_present_rounded),
+              //                       ),
+              //                       Text('Descargar archivo'),
+              //                     ],
+              //                   ),
+              //                 )
+              //               : Stack(
+              //                   alignment: Alignment.center,
+              //                   children: [
+              //                     CachedNetworkImage(
+              //                       imageUrl: message.filePath,
+              //                       fit: BoxFit.cover,
+              //                       width: containerWidth / 3,
+              //                       height: containerHeight / 5,
+              //                     ),
+              //                     const Icon(
+              //                       Icons.play_circle_filled,
+              //                       color: Colors.white70,
+              //                       size: 50,
+              //                     ),
+              //                   ],
+              //                 ),
+              //         ),
+              //       )
+              GestureDetector(
                   onTap: () {
                     showDialog(
                       context: context,
-                      builder: (context) => SingleChildScrollView(
-                        child: AlertDialog(
+                      builder: (context) {
+                        _controller = VideoPlayerController.network(
+                            widget.message.content)
+                          ..initialize().then((_) {
+                            _controller.play();
+                          });
+                        return AlertDialog(
                           insetPadding: const EdgeInsets.only(),
                           contentPadding: EdgeInsets.zero,
-                          content: FractionallySizedBox(
-                            widthFactor: 0.90,
-                            child: Center(
-                              child: Column(
+                          content: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Align(
+                                alignment: Alignment.topLeft,
+                                child: IconButton(
+                                  icon: Icon(Icons.arrow_back_ios),
+                                  onPressed: () {
+                                    _controller.pause();
+                                    Navigator.of(context).pop();
+                                  },
+                                ),
+                              ),
+                              AspectRatio(
+                                aspectRatio: 16 / 9,
+                                child: VideoPlayer(_controller),
+                              ),
+                              Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Align(
-                                    alignment: Alignment.topLeft,
-                                    child: IconButton(
-                                      icon: Icon(Icons.arrow_back_ios),
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        if (_controller.value.isPlaying) {
+                                          _controller.pause();
+                                        } else {
+                                          _controller.play();
+                                        }
+                                      });
+                                    },
+                                    icon: Icon(
+                                      _controller.value.isPlaying
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
                                     ),
                                   ),
-                                  CachedNetworkImage(
-                                    imageUrl: message.filePath.isEmpty
-                                        ? message.content
-                                        : message.filePath,
-
-                                    fit: BoxFit.cover,
-                                    width: containerWidth, // alto
-                                    height: containerHeight / 1.2, // ancho
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.open_in_browser),
-                                        tooltip: 'Abrir',
-                                        onPressed: () {
-                                          launchUrl(_url);
-                                          Navigator.of(context).pop();
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.copy),
-                                        onPressed: () {
-                                          if (isImageUrl) {
-                                            copyImageUrlToClipboard(
-                                                context, _url.toString());
-                                            Navigator.of(context).pop();
-                                          } else {
-                                            context.showErrorSnackBar(
-                                                message:
-                                                    "No se puede copiar el archivo ❌");
-                                            Navigator.of(context).pop();
-                                          }
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.download),
-                                        onPressed: () async {
-                                          if (Platform.isAndroid ||
-                                              Platform.isIOS) {
-                                            Navigator.of(context).pop();
-
-                                            _downloadFile(
-                                                context, message.content);
-                                            context.showSnackBar(
-                                              message:
-                                                  'Archivo guardado en la galeria 📂',
-                                              messageColor: Theme.of(context)
-                                                  .primaryColor,
-                                              // context: context,
-                                            );
-                                          } else {
-                                            await launchUrl(_url);
-                                          }
-                                        },
-                                      ),
-                                    ],
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _controller.pause();
+                                        _controller.seekTo(Duration.zero);
+                                      });
+                                    },
+                                    icon: Icon(Icons.stop),
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
                   child: Card(
-                    child: message.filePath.isEmpty
+                    child: widget.message.filePath.isEmpty
                         ? CachedNetworkImage(
                             fit: BoxFit.cover,
                             width: containerWidth / 3,
                             height: containerHeight / 5,
-                            imageUrl: message.content,
-                            placeholder: (context, url) =>
-                                const CircularProgressIndicator(),
-                            errorWidget: (context, url, error) => Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    IconButton(
-                                      onPressed: () async {
-                                        if (Platform.isAndroid ||
-                                            Platform.isIOS) {
-                                          _downloadFile(
-                                              context, message.content);
-                                        } else {
-                                          await launchUrl(_url);
-                                        }
-                                      },
-                                      iconSize: 80,
-                                      icon: Icon(Icons.file_present_rounded),
-                                    ),
-                                    Text('Descargar archivo'),
-                                  ],
-                                ))
+                            imageUrl: widget.message.content,
+                            // ...
+                          )
                         : Stack(
                             alignment: Alignment.center,
                             children: [
                               CachedNetworkImage(
-                                imageUrl: message.filePath,
+                                imageUrl: widget.message.filePath,
                                 fit: BoxFit.cover,
                                 width: containerWidth / 3,
                                 height: containerHeight / 5,
@@ -588,21 +729,22 @@ class _ChatBubble extends StatelessWidget {
                           ),
                   ),
                 )
-              : Text(message.content),
+              : Text(widget.message.content),
         ),
       ),
       const SizedBox(width: 12),
-      Text(format(message.createdAt, locale: 'en_short')),
+      Text(format(widget.message.createdAt, locale: 'en_short')),
       const SizedBox(width: 60),
     ];
-    if (message.isMine) {
+    if (widget.message.isMine) {
       chatContents = chatContents.reversed.toList();
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 18),
       child: Row(
-        mainAxisAlignment:
-            message.isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: widget.message.isMine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: chatContents,
       ),
     );
