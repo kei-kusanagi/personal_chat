@@ -15,6 +15,7 @@ import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../theme/app_theme.dart';
@@ -408,7 +409,7 @@ class _MessageBarState extends State<_MessageBar> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
+class _ChatBubble extends StatefulWidget {
   const _ChatBubble({
     Key? key,
     required this.message,
@@ -419,22 +420,53 @@ class _ChatBubble extends StatelessWidget {
   final Profile? profile;
 
   @override
+  State<_ChatBubble> createState() => _ChatBubbleState();
+}
+
+class _ChatBubbleState extends State<_ChatBubble> {
+  bool isPlay = true;
+
+  late VideoPlayerController _controller;
+  @override
+  void initState() {
+    super.initState();
+    if (_isVideo(widget.message.content)) {
+      _controller =
+          VideoPlayerController.networkUrl(Uri.parse(widget.message.content))
+            ..initialize().then((_) {
+              setState(() {});
+            });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool _isVideo(String url) {
+    final videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'];
+    final fileExtension = url.toLowerCase();
+    return videoExtensions
+        .any((extension) => fileExtension.endsWith(extension));
+  }
+
+  @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
     double containerWidth = screenSize.width * 0.95;
     double containerHeight = screenSize.height * 0.95;
-    bool isImageUrl = Uri.tryParse(message.content)?.isAbsolute ?? false;
+    bool isImageUrl = Uri.tryParse(widget.message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-    final Uri _url = Uri.parse(message.content);
-
-    Color pickerColor = themeModel.colorTheme;
+    final Uri _url = Uri.parse(widget.message.content);
 
     List<Widget> chatContents = [
-      if (!message.isMine)
+      if (!widget.message.isMine)
         CircleAvatar(
-          child: profile == null
+          child: widget.profile == null
               ? preloader
-              : Text(profile!.username.substring(0, 2)),
+              : Text(widget.profile!.username.substring(0, 2)),
         ),
       const SizedBox(width: 12),
       Flexible(
@@ -444,7 +476,7 @@ class _ChatBubble extends StatelessWidget {
             horizontal: 12,
           ),
           decoration: BoxDecoration(
-            color: message.isMine
+            color: widget.message.isMine
                 ? themeModel.colorTheme
                 : Theme.of(context).focusColor,
             borderRadius: BorderRadius.circular(8),
@@ -468,21 +500,40 @@ class _ChatBubble extends StatelessWidget {
                                   Align(
                                     alignment: Alignment.topLeft,
                                     child: IconButton(
-                                      icon: Icon(Icons.arrow_back_ios),
+                                      icon: const Icon(Icons.arrow_back_ios),
                                       onPressed: () {
                                         Navigator.of(context).pop();
+                                        widget.message.filePath.isNotEmpty
+                                            ? setState(() {
+                                                _controller.pause();
+                                                _controller
+                                                    .seekTo(Duration.zero);
+                                              })
+                                            : null;
                                       },
                                     ),
                                   ),
-                                  CachedNetworkImage(
-                                    imageUrl: message.filePath.isEmpty
-                                        ? message.content
-                                        : message.filePath,
+                                  widget.message.filePath.isEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: widget.message.content,
+                                          fit: BoxFit.cover,
+                                          width: containerWidth, // alto
+                                          height:
+                                              containerHeight / 1.2, // ancho
+                                        )
+                                      : Builder(
+                                          builder: (context) {
+                                            _controller = VideoPlayerController
+                                                .networkUrl(Uri.parse(
+                                                    widget.message.content))
+                                              ..initialize().then((_) {
+                                                _controller.play();
+                                              });
 
-                                    fit: BoxFit.cover,
-                                    width: containerWidth, // alto
-                                    height: containerHeight / 1.2, // ancho
-                                  ),
+                                            return VideoAlertDialog(
+                                                _controller);
+                                          },
+                                        ),
                                   const SizedBox(height: 2),
                                   Row(
                                     mainAxisAlignment:
@@ -518,8 +569,8 @@ class _ChatBubble extends StatelessWidget {
                                               Platform.isIOS) {
                                             Navigator.of(context).pop();
 
-                                            _downloadFile(
-                                                context, message.content);
+                                            _downloadFile(context,
+                                                widget.message.content);
                                             context.showSnackBar(
                                               message:
                                                   'Archivo guardado en la galeria 📂',
@@ -543,12 +594,12 @@ class _ChatBubble extends StatelessWidget {
                     );
                   },
                   child: Card(
-                    child: message.filePath.isEmpty
+                    child: widget.message.filePath.isEmpty
                         ? CachedNetworkImage(
                             fit: BoxFit.cover,
                             width: containerWidth / 3,
                             height: containerHeight / 5,
-                            imageUrl: message.content,
+                            imageUrl: widget.message.content,
                             placeholder: (context, url) =>
                                 const CircularProgressIndicator(),
                             errorWidget: (context, url, error) => Column(
@@ -559,22 +610,23 @@ class _ChatBubble extends StatelessWidget {
                                         if (Platform.isAndroid ||
                                             Platform.isIOS) {
                                           _downloadFile(
-                                              context, message.content);
+                                              context, widget.message.content);
                                         } else {
                                           await launchUrl(_url);
                                         }
                                       },
                                       iconSize: 80,
-                                      icon: Icon(Icons.file_present_rounded),
+                                      icon: const Icon(
+                                          Icons.file_present_rounded),
                                     ),
-                                    Text('Descargar archivo'),
+                                    const Text('Descargar archivo'),
                                   ],
                                 ))
                         : Stack(
                             alignment: Alignment.center,
                             children: [
                               CachedNetworkImage(
-                                imageUrl: message.filePath,
+                                imageUrl: widget.message.filePath,
                                 fit: BoxFit.cover,
                                 width: containerWidth / 3,
                                 height: containerHeight / 5,
@@ -588,21 +640,22 @@ class _ChatBubble extends StatelessWidget {
                           ),
                   ),
                 )
-              : Text(message.content),
+              : Text(widget.message.content),
         ),
       ),
       const SizedBox(width: 12),
-      Text(format(message.createdAt, locale: 'en_short')),
+      Text(format(widget.message.createdAt, locale: 'en_short')),
       const SizedBox(width: 60),
     ];
-    if (message.isMine) {
+    if (widget.message.isMine) {
       chatContents = chatContents.reversed.toList();
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 18),
       child: Row(
-        mainAxisAlignment:
-            message.isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: widget.message.isMine
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: chatContents,
       ),
     );
@@ -652,4 +705,84 @@ Future<String?> videoThumbnail(path) async {
   );
 
   return fileName;
+}
+
+class VideoAlertDialog extends StatefulWidget {
+  final VideoPlayerController controller;
+
+  VideoAlertDialog(this.controller);
+
+  @override
+  _VideoAlertDialogState createState() => _VideoAlertDialogState();
+}
+
+class _VideoAlertDialogState extends State<VideoAlertDialog> {
+  bool isPlaying = true;
+
+  void togglePlayPause() {
+    setState(() {
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        widget.controller.play();
+      } else {
+        widget.controller.pause();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Size screenSize = MediaQuery.of(context).size;
+    double containerWidth = screenSize.width * 0.95;
+    double containerHeight = screenSize.height * 0.95;
+    return AlertDialog(
+      insetPadding: const EdgeInsets.only(),
+      contentPadding: EdgeInsets.zero,
+      content: FractionallySizedBox(
+        widthFactor: 0.90,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AspectRatio(
+                // aspectRatio: screenSize.height / screenSize.width,
+                aspectRatio: 4 / 2,
+                child: VideoPlayer(widget.controller),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                      onPressed: () {
+                        setState(() {
+                          if (widget.controller.value.isPlaying) {
+                            widget.controller.pause();
+                          } else {
+                            widget.controller.play();
+                          }
+                          togglePlayPause();
+                        });
+                      },
+                      icon: isPlaying
+                          ? const Icon(Icons.pause)
+                          : const Icon(Icons.play_arrow)),
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        widget.controller.pause();
+                        widget.controller.seekTo(Duration.zero);
+                        isPlaying = false;
+                      });
+                    },
+                    icon: const Icon(Icons.stop),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

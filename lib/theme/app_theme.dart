@@ -16,6 +16,14 @@ class ThemeModel extends ChangeNotifier {
     _isDark = newDarkLigth;
     notifyListeners();
   }
+
+  // bool _isPlayed = true;
+  // bool get isPlayed => _isPlayed;
+  //
+  // set isPlayed(bool playControler) {
+  //   _isPlayed = playControler;
+  //   notifyListeners();
+  // }
 }
 
 class AppTheme {
