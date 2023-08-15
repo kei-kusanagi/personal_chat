@@ -4,8 +4,10 @@ import 'package:provider/provider.dart' as provider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
+// import 'package:media_kit/media_kit.dart';
 
 void main() async {
+  // MediaKit.ensureInitialized();
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
     url: 'https://bdhwkukeejylmfoxyygb.supabase.co',
