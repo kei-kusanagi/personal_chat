@@ -12,9 +12,13 @@ void main() async {
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkaHdrdWtlZWp5bG1mb3h5eWdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAyMzM1MjMsImV4cCI6MjAwNTgwOTUyM30.9civyOj1ITEsIAFcwc0nrQB6ihqEcsg2hp2emylRaRQ',
   );
+
+  final themeModel = ThemeModel();
+  await themeModel.loadTheme();
+
   runApp(
-    provider.ChangeNotifierProvider(
-      create: (_) => ThemeModel(),
+    provider.ChangeNotifierProvider.value(
+      value: themeModel,
       child: const MyApp(),
     ),
   );

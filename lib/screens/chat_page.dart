@@ -65,6 +65,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
       themeModel.isDark = !themeModel.isDark;
+      themeModel.setIsDark(themeModel.isDark);
     });
   }
 
@@ -87,6 +88,7 @@ class _ChatPageState extends State<ChatPage> {
 
     void changeColor(Color color) {
       setState(() => pickerColor = color);
+      themeModel.setColorTheme(color);
     }
 
     return Scaffold(
@@ -310,7 +312,7 @@ class _MessageBarState extends State<_MessageBar> {
           '.mkv',
           '.flv',
           '.wmv'
-        ]; // Agrega más extensiones si es necesario
+        ];
         final fileExtension = url.toLowerCase();
 
         return videoExtensions
@@ -319,21 +321,25 @@ class _MessageBarState extends State<_MessageBar> {
 
       bool isVideoLink = _isVideo(supabaseFilePath);
       if (isVideoLink) {
-        String? thumbnailPath = await videoThumbnail(
-            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath');
-        final miniatura = File(thumbnailPath!);
-        _pickedFileName = pickedFile.files.first.name;
+        try {
+          String? thumbnailPath = await videoThumbnail(
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath');
+          final miniatura = File(thumbnailPath!);
+          _pickedFileName = pickedFile.files.first.name;
 
-        _pickedFileName =
-            _pickedFileName.substring(0, _pickedFileName.lastIndexOf('.'));
+          _pickedFileName =
+              _pickedFileName.substring(0, _pickedFileName.lastIndexOf('.'));
 
-        await client.storage
-            .from('Files')
-            .upload('$_pickedFileName.png', miniatura)
-            .then((response) {
-          thumbnailFilePath =
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
-        });
+          await client.storage
+              .from('Files')
+              .upload('$_pickedFileName.png', miniatura)
+              .then((response) {
+            thumbnailFilePath =
+                'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
+          });
+        } catch (e) {
+          print(e);
+        }
       } else {
         thumbnailFilePath = '';
       }
@@ -436,6 +442,8 @@ class _ChatBubbleState extends State<_ChatBubble> {
             ..initialize().then((_) {
               setState(() {});
             });
+    } else {
+      _controller = VideoPlayerController.asset('');
     }
   }
 
@@ -607,19 +615,13 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                   children: [
                                     IconButton(
                                       onPressed: () async {
-                                        if (Platform.isAndroid ||
-                                            Platform.isIOS) {
-                                          _downloadFile(
-                                              context, widget.message.content);
-                                        } else {
-                                          await launchUrl(_url);
-                                        }
+                                        await launchUrl(_url);
                                       },
                                       iconSize: 80,
                                       icon: const Icon(
                                           Icons.file_present_rounded),
                                     ),
-                                    const Text('Descargar archivo'),
+                                    const Text('Abrir archivo'),
                                   ],
                                 ))
                         : Stack(

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeModel extends ChangeNotifier {
-  Color _colorTheme = Colors.green;
+  Color _colorTheme = Colors.green; // Asigna un valor predeterminado
   Color get colorTheme => _colorTheme;
 
   set colorTheme(Color newColor) {
@@ -9,21 +10,38 @@ class ThemeModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _isDark = false;
+  bool _isDark = false; // Asigna un valor predeterminado
   bool get isDark => _isDark;
 
-  set isDark(bool newDarkLigth) {
-    _isDark = newDarkLigth;
+  set isDark(bool newDarkLight) {
+    _isDark = newDarkLight;
     notifyListeners();
   }
 
-  // bool _isPlayed = true;
-  // bool get isPlayed => _isPlayed;
-  //
-  // set isPlayed(bool playControler) {
-  //   _isPlayed = playControler;
-  //   notifyListeners();
-  // }
+  Future<void> loadTheme() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    _colorTheme = Color(prefs.getInt('colorTheme') ?? Colors.green.value);
+    _isDark = prefs.getBool('isDark') ?? false;
+
+    notifyListeners();
+  }
+
+  void setColorTheme(Color newColor) async {
+    _colorTheme = newColor;
+    notifyListeners();
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setInt('colorTheme', newColor.value);
+  }
+
+  void setIsDark(bool newDarkLight) async {
+    _isDark = newDarkLight;
+    notifyListeners();
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool('isDark', newDarkLight);
+  }
 }
 
 class AppTheme {
@@ -35,6 +53,6 @@ class AppTheme {
         useMaterial3: true,
         colorSchemeSeed: themeModel.colorTheme,
         appBarTheme: const AppBarTheme(elevation: 20),
-        brightness: themeModel._isDark ? Brightness.dark : Brightness.light,
+        brightness: themeModel.isDark ? Brightness.dark : Brightness.light,
       );
 }
