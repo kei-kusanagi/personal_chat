@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:camera_platform_interface/camera_platform_interface.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -22,6 +23,8 @@ import '../theme/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
+
+import 'camera_screen.dart';
 
 /// Page to chat with someone.
 ///
@@ -373,7 +376,19 @@ class _MessageBarState extends State<_MessageBar> {
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     Color pickerColor = themeModel.colorTheme;
     final ImagePicker picker = ImagePicker();
-    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+
+    XFile? photo;
+
+    if (Platform.isWindows) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const windows_camera()),
+      );
+      // final CameraPlatform.instance.buildPreview(_cameraId);
+      // final XFile file = await CameraPlatform.instance.takePicture(_cameraId);
+    } else {
+      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+    }
 
     String filePath = '';
     final myUserId = supabase.auth.currentUser!.id;

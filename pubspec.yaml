@@ -28,6 +28,7 @@ dependencies:
   video_thumbnail: ^0.5.3
   video_player: ^2.7.0
   shared_preferences: ^2.2.0
+  camera_windows: ^0.2.1+7
 
 
 
