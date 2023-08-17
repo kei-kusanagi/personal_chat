@@ -1,5 +1,9 @@
 import 'dart:io';
-// import 'package:media_kit_video/media_kit_video.dart';
+import 'package:camera_platform_interface/camera_platform_interface.dart';
+
+import 'package:media_kit/media_kit.dart'; // Provides [Player], [Media], [Playlist] etc.
+import 'package:media_kit_video/media_kit_video.dart'; // Provides [VideoController] & [Video] etc.
+// import 'package:video_player/video_player.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
@@ -15,13 +19,15 @@ import 'package:personal_messenger/models/profile.dart';
 import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
-import 'package:video_player/video_player.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../theme/app_theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
+
+import 'camera_screen.dart';
 
 /// Page to chat with someone.
 ///
@@ -65,6 +71,7 @@ class _ChatPageState extends State<ChatPage> {
     setState(() {
       final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
       themeModel.isDark = !themeModel.isDark;
+      themeModel.setIsDark(themeModel.isDark);
     });
   }
 
@@ -87,6 +94,7 @@ class _ChatPageState extends State<ChatPage> {
 
     void changeColor(Color color) {
       setState(() => pickerColor = color);
+      themeModel.setColorTheme(color);
     }
 
     return Scaffold(
@@ -252,7 +260,6 @@ class _MessageBarState extends State<_MessageBar> {
   @override
   void dispose() {
     _textController.dispose();
-
     super.dispose();
   }
 
@@ -264,7 +271,7 @@ class _MessageBarState extends State<_MessageBar> {
     if (text.isEmpty) {
       context.showSnackBar(
         message: 'Escribe un mensaje',
-        messageColor: pickerColor,
+        messageColor: pickerColor, title: 'No tan rapido 📣',
         // context: context,
       );
       return;
@@ -310,7 +317,7 @@ class _MessageBarState extends State<_MessageBar> {
           '.mkv',
           '.flv',
           '.wmv'
-        ]; // Agrega más extensiones si es necesario
+        ];
         final fileExtension = url.toLowerCase();
 
         return videoExtensions
@@ -319,21 +326,25 @@ class _MessageBarState extends State<_MessageBar> {
 
       bool isVideoLink = _isVideo(supabaseFilePath);
       if (isVideoLink) {
-        String? thumbnailPath = await videoThumbnail(
-            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath');
-        final miniatura = File(thumbnailPath!);
-        _pickedFileName = pickedFile.files.first.name;
+        try {
+          String? thumbnailPath = await videoThumbnail(
+              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath');
+          final miniatura = File(thumbnailPath!);
+          _pickedFileName = pickedFile.files.first.name;
 
-        _pickedFileName =
-            _pickedFileName.substring(0, _pickedFileName.lastIndexOf('.'));
+          _pickedFileName =
+              _pickedFileName.substring(0, _pickedFileName.lastIndexOf('.'));
 
-        await client.storage
-            .from('Files')
-            .upload('$_pickedFileName.png', miniatura)
-            .then((response) {
-          thumbnailFilePath =
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
-        });
+          await client.storage
+              .from('Files')
+              .upload('$_pickedFileName.png', miniatura)
+              .then((response) {
+            thumbnailFilePath =
+                'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
+          });
+        } catch (e) {
+          print(e);
+        }
       } else {
         thumbnailFilePath = '';
       }
@@ -349,7 +360,7 @@ class _MessageBarState extends State<_MessageBar> {
         context.showSnackBar(
           message: "📎 Archivo subido 📂",
           messageColor: pickerColor,
-          // context: context,
+          title: '😎 Listo!!!',
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
@@ -367,44 +378,52 @@ class _MessageBarState extends State<_MessageBar> {
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     Color pickerColor = themeModel.colorTheme;
     final ImagePicker picker = ImagePicker();
-    final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+
+    XFile? photo;
+
+    if (Platform.isWindows) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const windows_camera()),
+      );
+    } else {
+      photo = await picker.pickImage(source: ImageSource.camera);
+    }
 
     String filePath = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
 
-    if (photo != null) {
-      final File imageFile = File(photo.path);
+    final File imageFile = File(photo!.path);
 
-      await client.storage
-          .from('Files')
-          .upload(photo.name, imageFile)
-          .then((response) {
-        filePath = response;
-        // print(filePath);
+    await client.storage
+        .from('Files')
+        .upload(photo.name, imageFile)
+        .then((response) {
+      filePath = response;
+      // print(filePath);
+    });
+
+    try {
+      await supabase.from('messages').insert({
+        'profile_id': myUserId,
+        'content':
+            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
+        'file_path': '',
       });
-
-      try {
-        await supabase.from('messages').insert({
-          'profile_id': myUserId,
-          'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
-          'file_path': '',
-        });
-        context.showSnackBar(
-          message: "📷 Foto subida correctamente 🖼",
-          messageColor: pickerColor,
-          // context: context,
-        );
-      } on StorageException catch (error) {
-        context.showErrorSnackBar(
-          message: error.message,
-        );
-      } catch (e) {
-        context.showErrorSnackBar(
-          message: unexpectedErrorMessage,
-        );
-      }
+      context.showSnackBar(
+        message: "Foto subida correctamente 🖼",
+        messageColor: pickerColor,
+        title: '📷 Listo!!!',
+      );
+    } on StorageException catch (error) {
+      context.showErrorSnackBar(
+        message: error.message,
+      );
+    } catch (e) {
+      context.showErrorSnackBar(
+        message: unexpectedErrorMessage,
+      );
     }
   }
 }
@@ -424,6 +443,37 @@ class _ChatBubble extends StatefulWidget {
 }
 
 class _ChatBubbleState extends State<_ChatBubble> {
+  bool isPlay = true;
+
+  // late VideoPlayerController _controller;
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   if (_isVideo(widget.message.content)) {
+  //     _controller =
+  //         VideoPlayerController.networkUrl(Uri.parse(widget.message.content))
+  //           ..initialize().then((_) {
+  //             setState(() {});
+  //           });
+  //   } else {
+  //     _controller = VideoPlayerController.asset('');
+  //   }
+  // }
+
+  // @override
+  // void dispose() {
+  //   // _controller.dispose();
+  //   player.dispose();
+  //   super.dispose();
+  // }
+
+  bool _isVideo(String url) {
+    final videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'];
+    final fileExtension = url.toLowerCase();
+    return videoExtensions
+        .any((extension) => fileExtension.endsWith(extension));
+  }
+
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
@@ -432,8 +482,6 @@ class _ChatBubbleState extends State<_ChatBubble> {
     bool isImageUrl = Uri.tryParse(widget.message.content)?.isAbsolute ?? false;
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     final Uri _url = Uri.parse(widget.message.content);
-    late VideoPlayerController _controller;
-    String videoLink = '';
 
     List<Widget> chatContents = [
       if (!widget.message.isMine)
@@ -456,250 +504,109 @@ class _ChatBubbleState extends State<_ChatBubble> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: isImageUrl
-              ?
-              // GestureDetector(
-              //         onTap: () {
-              //           showDialog(
-              //             context: context,
-              //             builder: (context) => SingleChildScrollView(
-              //               child: AlertDialog(
-              //                 insetPadding: const EdgeInsets.only(),
-              //                 contentPadding: EdgeInsets.zero,
-              //                 content: FractionallySizedBox(
-              //                   widthFactor: 0.90,
-              //                   child: Center(
-              //                     child: Column(
-              //                       mainAxisAlignment: MainAxisAlignment.center,
-              //                       mainAxisSize: MainAxisSize.min,
-              //                       children: [
-              //                         Align(
-              //                           alignment: Alignment.topLeft,
-              //                           child: IconButton(
-              //                             icon: Icon(Icons.arrow_back_ios),
-              //                             onPressed: () {
-              //                               Navigator.of(context).pop();
-              //                             },
-              //                           ),
-              //                         ),
-              //                         if (message.filePath.isEmpty)
-              //                           CachedNetworkImage(
-              //                             imageUrl: message.content,
-              //                             fit: BoxFit.cover,
-              //                             width: containerWidth,
-              //                             height: containerHeight / 1.2,
-              //                           )
-              //                         else
-              //                           Column(
-              //                             mainAxisAlignment:
-              //                                 MainAxisAlignment.center,
-              //                             children: [
-              //                               AspectRatio(
-              //                                 aspectRatio: 16 /
-              //                                     9, // Ajusta este valor según tus necesidades
-              //                                 child: VideoPlayer(_controller),
-              //                               ),
-              //                               Row(
-              //                                 mainAxisAlignment:
-              //                                     MainAxisAlignment.center,
-              //                                 children: [
-              //                                   IconButton(
-              //                                     onPressed: () {
-              //                                       setState(() {
-              //                                         if (_controller
-              //                                             .value.isPlaying) {
-              //                                           _controller.pause();
-              //                                         } else {
-              //                                           _controller.play();
-              //                                         }
-              //                                       });
-              //                                     },
-              //                                     icon: Icon(
-              //                                       _controller.value.isPlaying
-              //                                           ? Icons.pause
-              //                                           : Icons.play_arrow,
-              //                                     ),
-              //                                   ),
-              //                                   IconButton(
-              //                                     onPressed: () {
-              //                                       setState(() {
-              //                                         _controller.pause();
-              //                                         _controller
-              //                                             .seekTo(Duration.zero);
-              //                                       });
-              //                                     },
-              //                                     icon: Icon(Icons.stop),
-              //                                   ),
-              //                                 ],
-              //                               ),
-              //                             ],
-              //                           ),
-              //                         SizedBox(height: 2),
-              //                         Row(
-              //                           mainAxisAlignment:
-              //                               MainAxisAlignment.spaceEvenly,
-              //                           children: [
-              //                             IconButton(
-              //                               icon: Icon(Icons.open_in_browser),
-              //                               tooltip: 'Abrir',
-              //                               onPressed: () {
-              //                                 launchUrl(_url);
-              //                                 Navigator.of(context).pop();
-              //                               },
-              //                             ),
-              //                             IconButton(
-              //                               icon: Icon(Icons.copy),
-              //                               onPressed: () {
-              //                                 if (isImageUrl) {
-              //                                   copyImageUrlToClipboard(
-              //                                       context, _url.toString());
-              //                                   Navigator.of(context).pop();
-              //                                 } else {
-              //                                   context.showErrorSnackBar(
-              //                                       message:
-              //                                           "No se puede copiar el archivo ❌");
-              //                                   Navigator.of(context).pop();
-              //                                 }
-              //                               },
-              //                             ),
-              //                             IconButton(
-              //                               icon: Icon(Icons.download),
-              //                               onPressed: () async {
-              //                                 if (Platform.isAndroid ||
-              //                                     Platform.isIOS) {
-              //                                   Navigator.of(context).pop();
-              //                                   _downloadFile(
-              //                                       context, message.content);
-              //                                   context.showSnackBar(
-              //                                     message:
-              //                                         'Archivo guardado en la galería 📂',
-              //                                     messageColor: Theme.of(context)
-              //                                         .primaryColor,
-              //                                   );
-              //                                 } else {
-              //                                   await launchUrl(_url);
-              //                                 }
-              //                               },
-              //                             ),
-              //                           ],
-              //                         ),
-              //                       ],
-              //                     ),
-              //                   ),
-              //                 ),
-              //               ),
-              //             ),
-              //           );
-              //         },
-              //         child: Card(
-              //           child: message.filePath.isEmpty
-              //               ? CachedNetworkImage(
-              //                   fit: BoxFit.cover,
-              //                   width: containerWidth / 3,
-              //                   height: containerHeight / 5,
-              //                   imageUrl: message.content,
-              //                   placeholder: (context, url) =>
-              //                       const CircularProgressIndicator(),
-              //                   errorWidget: (context, url, error) => Column(
-              //                     mainAxisAlignment: MainAxisAlignment.center,
-              //                     children: [
-              //                       IconButton(
-              //                         onPressed: () async {
-              //                           if (Platform.isAndroid || Platform.isIOS) {
-              //                             _downloadFile(context, message.content);
-              //                           } else {
-              //                             await launchUrl(_url);
-              //                           }
-              //                         },
-              //                         iconSize: 80,
-              //                         icon: Icon(Icons.file_present_rounded),
-              //                       ),
-              //                       Text('Descargar archivo'),
-              //                     ],
-              //                   ),
-              //                 )
-              //               : Stack(
-              //                   alignment: Alignment.center,
-              //                   children: [
-              //                     CachedNetworkImage(
-              //                       imageUrl: message.filePath,
-              //                       fit: BoxFit.cover,
-              //                       width: containerWidth / 3,
-              //                       height: containerHeight / 5,
-              //                     ),
-              //                     const Icon(
-              //                       Icons.play_circle_filled,
-              //                       color: Colors.white70,
-              //                       size: 50,
-              //                     ),
-              //                   ],
-              //                 ),
-              //         ),
-              //       )
-              GestureDetector(
+              ? GestureDetector(
                   onTap: () {
                     showDialog(
                       context: context,
-                      builder: (context) {
-                        _controller = VideoPlayerController.network(
-                            widget.message.content)
-                          ..initialize().then((_) {
-                            _controller.play();
-                          });
-                        return AlertDialog(
+                      builder: (context) => SingleChildScrollView(
+                        child: AlertDialog(
                           insetPadding: const EdgeInsets.only(),
                           contentPadding: EdgeInsets.zero,
-                          content: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Align(
-                                alignment: Alignment.topLeft,
-                                child: IconButton(
-                                  icon: Icon(Icons.arrow_back_ios),
-                                  onPressed: () {
-                                    _controller.pause();
-                                    Navigator.of(context).pop();
-                                  },
-                                ),
-                              ),
-                              AspectRatio(
-                                aspectRatio: 16 / 9,
-                                child: VideoPlayer(_controller),
-                              ),
-                              Row(
+                          content: FractionallySizedBox(
+                            widthFactor: 0.90,
+                            child: Center(
+                              child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        if (_controller.value.isPlaying) {
-                                          _controller.pause();
-                                        } else {
-                                          _controller.play();
-                                        }
-                                      });
-                                    },
-                                    icon: Icon(
-                                      _controller.value.isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
+                                  Align(
+                                    alignment: Alignment.topLeft,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.arrow_back_ios),
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                        widget.message.filePath.isNotEmpty
+                                            ? setState(() {
+                                                // _controller.pause();
+                                                // _controller
+                                                //     .seekTo(Duration.zero);
+                                              })
+                                            : null;
+                                      },
                                     ),
                                   ),
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _controller.pause();
-                                        _controller.seekTo(Duration.zero);
-                                      });
-                                    },
-                                    icon: Icon(Icons.stop),
+                                  widget.message.filePath.isEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl: widget.message.content,
+                                          fit: BoxFit.cover,
+                                          width: containerWidth, // alto
+                                          height:
+                                              containerHeight / 1.2, // ancho
+                                        )
+                                      : Builder(
+                                          builder: (context) {
+                                            return VideoAlertDialog(
+                                                widget.message.content);
+                                          },
+                                        ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.open_in_browser),
+                                        tooltip: 'Abrir',
+                                        onPressed: () {
+                                          launchUrl(_url);
+                                          Navigator.of(context).pop();
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.copy),
+                                        onPressed: () {
+                                          if (isImageUrl) {
+                                            copyImageUrlToClipboard(
+                                                context, _url.toString());
+                                            Navigator.of(context).pop();
+                                          } else {
+                                            context.showErrorSnackBar(
+                                                message:
+                                                    "No se puede copiar el archivo ❌");
+                                            Navigator.of(context).pop();
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.download),
+                                        onPressed: () async {
+                                          if (Platform.isAndroid ||
+                                              Platform.isIOS) {
+                                            Navigator.of(context).pop();
+
+                                            _downloadFile(context,
+                                                widget.message.content);
+                                            context.showSnackBar(
+                                              message:
+                                                  'guardado en la galeria 📂',
+                                              messageColor: Theme.of(context)
+                                                  .primaryColor,
+                                              title: '📎 Tu archivo fue',
+                                              // context: context,
+                                            );
+                                          } else {
+                                            await launchUrl(_url);
+                                          }
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     );
                   },
                   child: Card(
@@ -709,8 +616,22 @@ class _ChatBubbleState extends State<_ChatBubble> {
                             width: containerWidth / 3,
                             height: containerHeight / 5,
                             imageUrl: widget.message.content,
-                            // ...
-                          )
+                            placeholder: (context, url) =>
+                                const CircularProgressIndicator(),
+                            errorWidget: (context, url, error) => Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                      onPressed: () {
+                                        launchUrl(_url);
+                                      },
+                                      iconSize: 80,
+                                      icon: const Icon(
+                                          Icons.file_present_rounded),
+                                    ),
+                                    const Text('Abrir archivo'),
+                                  ],
+                                ))
                         : Stack(
                             alignment: Alignment.center,
                             children: [
@@ -777,8 +698,8 @@ void copyImageUrlToClipboard(BuildContext context, imageUrl) {
   Clipboard.setData(ClipboardData(text: imageUrl));
 
   context.showSnackBar(
-    message: "Copiado al 📋",
-    messageColor: pickerColor,
+    message: "copiado al 📋",
+    messageColor: pickerColor, title: '🔗 Enlace ',
     // context: context,
   );
 }
@@ -794,4 +715,56 @@ Future<String?> videoThumbnail(path) async {
   );
 
   return fileName;
+}
+
+class VideoAlertDialog extends StatefulWidget {
+  final String video_url;
+
+  VideoAlertDialog(this.video_url);
+
+  @override
+  _VideoAlertDialogState createState() => _VideoAlertDialogState();
+}
+
+class _VideoAlertDialogState extends State<VideoAlertDialog> {
+  // Create a [Player] to control playback.
+  late final player = Player();
+  // Create a [VideoController] to handle video output from [Player].
+  late final controller = VideoController(player);
+
+  @override
+  void dispose() {
+    player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    player.open(Media(widget.video_url));
+    return AlertDialog(
+      insetPadding: const EdgeInsets.only(),
+      contentPadding: EdgeInsets.zero,
+      content: FractionallySizedBox(
+        widthFactor: 0.90,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AspectRatio(
+                aspectRatio: 4 / 2,
+                child:
+                    //
+                    SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.width * 9.0 / 16.0,
+                  child: Video(controller: controller),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

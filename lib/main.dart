@@ -4,19 +4,23 @@ import 'package:provider/provider.dart' as provider;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
-// import 'package:media_kit/media_kit.dart';
+import 'package:media_kit/media_kit.dart';
 
 void main() async {
-  // MediaKit.ensureInitialized();
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
   await Supabase.initialize(
     url: 'https://bdhwkukeejylmfoxyygb.supabase.co',
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkaHdrdWtlZWp5bG1mb3h5eWdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAyMzM1MjMsImV4cCI6MjAwNTgwOTUyM30.9civyOj1ITEsIAFcwc0nrQB6ihqEcsg2hp2emylRaRQ',
   );
+
+  final themeModel = ThemeModel();
+  await themeModel.loadTheme();
+
   runApp(
-    provider.ChangeNotifierProvider(
-      create: (_) => ThemeModel(),
+    provider.ChangeNotifierProvider.value(
+      value: themeModel,
       child: const MyApp(),
     ),
   );

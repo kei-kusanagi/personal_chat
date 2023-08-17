@@ -23,50 +23,51 @@ extension ShowSnackBar on BuildContext {
   /// Displays a basic snackbar
 
   void showSnackBar({
-    // required context,
+    required String title,
     required String message,
     required Color messageColor,
   }) {
     ScaffoldMessenger.of(this).showSnackBar(SnackBar(
-      duration: const Duration(seconds: 1),
-      content: Stack(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            height: 90,
-            decoration: BoxDecoration(
-                color: messageColor,
-                borderRadius: const BorderRadius.all(Radius.circular(20))),
-            child: Center(
-              child: Column(
+      duration: const Duration(seconds: 2),
+      content: Center(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          height: 100,
+          width: 400,
+          decoration: BoxDecoration(
+              color: messageColor,
+              borderRadius: const BorderRadius.all(Radius.circular(20))),
+          child: Stack(
+            children: [
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '😁 Listo...!',
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  Center(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontSize: 22, color: Colors.white),
+                    ),
                   ),
                   const Spacer(),
-                  Text(
-                    message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Center(
+                    child: Text(
+                      message,
+                      style: const TextStyle(fontSize: 16, color: Colors.white),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ),
-          const Align(
-            alignment: Alignment.topRight,
-            child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: Icon(
-                Icons.swipe_down,
-                color: Colors.white,
-                size: 20,
+              Container(
+                alignment: Alignment.topRight,
+                child: const Icon(
+                  Icons.swipe_down,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
       behavior: SnackBarBehavior.floating,
       backgroundColor: Colors.transparent,
@@ -77,7 +78,7 @@ extension ShowSnackBar on BuildContext {
   /// Displays a red snackbar indicating error
   void showErrorSnackBar({context, required String message}) {
     showSnackBar(
-      // context: context,
+      title: 'Ups🤔',
       message: message,
       messageColor: Colors.red,
     );
