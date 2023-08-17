@@ -98,9 +98,10 @@ class _windows_cameraState extends State<windows_camera> {
           .listen(_onCameraError);
 
       unawaited(_cameraClosingStreamSubscription?.cancel());
-      _cameraClosingStreamSubscription = CameraPlatform.instance
-          .onCameraClosing(cameraId)
-          .listen(_onCameraClosing);
+      // _cameraClosingStreamSubscription = CameraPlatform.instance
+      //     .onCameraClosing(cameraId)
+      //     .listen(_onCameraClosing)
+      // ;
 
       final Future<CameraInitializedEvent> initialized =
           CameraPlatform.instance.onCameraInitialized(cameraId).first;
@@ -120,7 +121,7 @@ class _windows_cameraState extends State<windows_camera> {
           _initialized = true;
           _cameraId = cameraId;
           _cameraIndex = cameraIndex;
-          _cameraInfo = 'Capturing camera: ${camera.name}';
+          _cameraInfo = 'Capturing camera 📷: ${camera.name}';
         });
       }
     } on CameraException catch (e) {
@@ -174,50 +175,94 @@ class _windows_cameraState extends State<windows_camera> {
     return CameraPlatform.instance.buildPreview(_cameraId);
   }
 
-  Future<void> _takePicture() async {
-    final XFile file = await CameraPlatform.instance.takePicture(_cameraId);
+  Future<void> _showPicturePreview(XFile pictureFile) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  tooltip: 'Volver a tomar',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  icon: Icon(Icons.refresh),
+                  iconSize: 45,
+                ),
+                IconButton(
+                  tooltip: 'Enviar y guardar',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _sendPicture(pictureFile);
+                  },
+                  icon: Icon(
+                    Icons.send_and_archive,
+                  ),
+                  iconSize: 40,
+                ),
+              ],
+            ),
+          ],
+          title: Text('Preview'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.file(File(pictureFile.path)),
+              SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-    // _showInSnackBar('Picture captured to: ${file.path}');
-
+  void _sendPicture(XFile pictureFile) async {
     String filePath = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
     final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
     Color pickerColor = themeModel.colorTheme;
 
-    if (file != null) {
-      final File imageFile = File(file.path);
+    final File imageFile = File(pictureFile.path);
 
-      await client.storage
-          .from('Files')
-          .upload(file.name, imageFile)
-          .then((response) {
-        filePath = response;
-        // print(filePath);
+    await client.storage
+        .from('Files')
+        .upload(pictureFile.name, imageFile)
+        .then((response) {
+      filePath = response;
+      // print(filePath);
+    });
+
+    try {
+      await supabase.from('messages').insert({
+        'profile_id': myUserId,
+        'content':
+            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
+        'file_path': '',
       });
-
-      try {
-        await supabase.from('messages').insert({
-          'profile_id': myUserId,
-          'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
-          'file_path': '',
-        });
-        context.showSnackBar(
-          message: "📷 Foto subida correctamente 🖼",
-          messageColor: pickerColor,
-          // context: context,
-        );
-      } on StorageException catch (error) {
-        context.showErrorSnackBar(
-          message: error.message,
-        );
-      } catch (e) {
-        context.showErrorSnackBar(
-          message: unexpectedErrorMessage,
-        );
-      }
+      context.showSnackBar(
+        message: "subida correctamente 🖼",
+        messageColor: pickerColor, title: 'Tu 📷 Foto fue',
+        // context: context,
+      );
+    } on StorageException catch (error) {
+      context.showErrorSnackBar(
+        message: error.message,
+      );
+    } catch (e) {
+      context.showErrorSnackBar(
+        message: unexpectedErrorMessage,
+      );
     }
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _takePicture() async {
+    final XFile file = await CameraPlatform.instance.takePicture(_cameraId);
+    _showPicturePreview(file);
   }
 
   Future<void> _switchCamera() async {
@@ -249,134 +294,122 @@ class _windows_cameraState extends State<windows_camera> {
 
   void _onCameraError(CameraErrorEvent event) {
     if (mounted) {
-      _scaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(content: Text('Error: ${event.description}')));
-
+      context.showErrorSnackBar(
+        message: 'Error: ${event.description}',
+      );
       // Dispose camera on camera error as it can not be used anymore.
       _disposeCurrentCamera();
       _fetchCameras();
     }
   }
 
-  void _onCameraClosing(CameraClosingEvent event) {
-    if (mounted) {
-      _showInSnackBar('Camera is closing');
-    }
-  }
-
-  void _showInSnackBar(String message) {
-    _scaffoldMessengerKey.currentState?.showSnackBar(SnackBar(
-      content: Text(message),
-      duration: const Duration(seconds: 1),
-    ));
-  }
-
-  final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
-      GlobalKey<ScaffoldMessengerState>();
+  // void _onCameraClosing(CameraClosingEvent event) {
+  //   final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+  //   Color pickerColor = themeModel.colorTheme;
+  //   if (mounted) {
+  //     context.showSnackBar(
+  //       message: 'Cambiar resolucion', messageColor: pickerColor,
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
-    _initializeCamera();
+    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
+    Color pickerColor = themeModel.colorTheme;
+    if (!_initialized) {
+      _initializeCamera();
+    }
     final List<DropdownMenuItem<ResolutionPreset>> resolutionItems =
         ResolutionPreset.values
             .map<DropdownMenuItem<ResolutionPreset>>((ResolutionPreset value) {
       return DropdownMenuItem<ResolutionPreset>(
         value: value,
-        child: Text(value.toString()),
+        child: Text(value.name.toString()),
       );
     }).toList();
-
-    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-    Color pickerColor = themeModel.colorTheme;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: pickerColor,
         title: const Text('Windows Camera'),
       ),
-      body: WillPopScope(
-        onWillPop: () async {
-          dispose();
-          return true;
-        },
-        child: ListView(
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: 5,
-                horizontal: 10,
-              ),
-              child: Text(_cameraInfo),
+      body: ListView(
+        children: <Widget>[
+          // Padding(
+          //   padding: const EdgeInsets.symmetric(
+          //     vertical: 5,
+          //     horizontal: 10,
+          //   ),
+          //   child: Text(_cameraInfo),
+          // ),
+          if (_cameras.isEmpty)
+            ElevatedButton(
+              onPressed: _fetchCameras,
+              child: const Text('Re-check available cameras'),
             ),
-            if (_cameras.isEmpty)
-              ElevatedButton(
-                onPressed: _fetchCameras,
-                child: const Text('Re-check available cameras'),
-              ),
-            if (_cameras.isNotEmpty)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  DropdownButton<ResolutionPreset>(
-                    value: _resolutionPreset,
-                    onChanged: (ResolutionPreset? value) {
-                      if (value != null) {
-                        _onResolutionChange(value);
-                      }
-                    },
-                    items: resolutionItems,
+          if (_cameras.isNotEmpty)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                DropdownButton<ResolutionPreset>(
+                  value: _resolutionPreset,
+                  onChanged: (ResolutionPreset? value) {
+                    if (value != null) {
+                      _onResolutionChange(value);
+                    }
+                  },
+                  items: resolutionItems,
+                ),
+                const SizedBox(width: 20),
+                if (_previewSize != null)
+                  Center(
+                    child: Text(
+                      'Size: ${_previewSize!.width.toStringAsFixed(0)}x${_previewSize!.height.toStringAsFixed(0)}',
+                    ),
                   ),
-                  const SizedBox(width: 20),
-                  // ElevatedButton(
-                  //   onPressed: _initialized
-                  //       ? _disposeCurrentCamera
-                  //       : _initializeCamera,
-                  //   child:
-                  //       Text(_initialized ? 'Dispose camera' : 'Create camera'),
-                  // ),
+                if (_cameras.length > 1) ...<Widget>[
                   const SizedBox(width: 5),
                   ElevatedButton(
-                    onPressed: _initialized ? _takePicture : null,
-                    child: const Text('Take picture'),
+                    onPressed: _switchCamera,
+                    child: const Text(
+                      'Switch camera',
+                    ),
                   ),
-                  const SizedBox(width: 5),
-                  if (_cameras.length > 1) ...<Widget>[
-                    const SizedBox(width: 5),
-                    ElevatedButton(
-                      onPressed: _switchCamera,
-                      child: const Text(
-                        'Switch camera',
-                      ),
-                    ),
-                  ]
-                ],
+                ]
+              ],
+            ),
+          const SizedBox(height: 5),
+          if (_initialized && _cameraId > 0 && _previewSize != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 10,
               ),
-            const SizedBox(height: 5),
-            if (_initialized && _cameraId > 0 && _previewSize != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                ),
-                child: Align(
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      maxHeight: 500,
-                    ),
-                    child: AspectRatio(
-                      aspectRatio: _previewSize!.width / _previewSize!.height,
-                      child: _buildPreview(),
-                    ),
+              child: Align(
+                child: Container(
+                  constraints: const BoxConstraints(
+                    maxHeight: 500,
+                  ),
+                  child: AspectRatio(
+                    aspectRatio: _previewSize!.width / _previewSize!.height,
+                    child: _buildPreview(),
                   ),
                 ),
               ),
-            if (_previewSize != null)
-              Center(
-                child: Text(
-                  'Preview size: ${_previewSize!.width.toStringAsFixed(0)}x${_previewSize!.height.toStringAsFixed(0)}',
-                ),
+            ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: IconButton(
+                tooltip: 'Take a Picture',
+                onPressed: _initialized ? _takePicture : null,
+                icon: const Icon(Icons.camera_alt),
+                iconSize: 45,
+                color: pickerColor,
               ),
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -269,7 +269,7 @@ class _MessageBarState extends State<_MessageBar> {
     if (text.isEmpty) {
       context.showSnackBar(
         message: 'Escribe un mensaje',
-        messageColor: pickerColor,
+        messageColor: pickerColor, title: 'No tan rapido 📣',
         // context: context,
       );
       return;
@@ -358,7 +358,7 @@ class _MessageBarState extends State<_MessageBar> {
         context.showSnackBar(
           message: "📎 Archivo subido 📂",
           messageColor: pickerColor,
-          // context: context,
+          title: '😎 Listo!!!',
         );
       } on StorageException catch (error) {
         context.showErrorSnackBar(
@@ -384,48 +384,44 @@ class _MessageBarState extends State<_MessageBar> {
         context,
         MaterialPageRoute(builder: (context) => const windows_camera()),
       );
-      // final CameraPlatform.instance.buildPreview(_cameraId);
-      // final XFile file = await CameraPlatform.instance.takePicture(_cameraId);
     } else {
-      final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+      photo = await picker.pickImage(source: ImageSource.camera);
     }
 
     String filePath = '';
     final myUserId = supabase.auth.currentUser!.id;
     final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
 
-    if (photo != null) {
-      final File imageFile = File(photo.path);
+    final File imageFile = File(photo!.path);
 
-      await client.storage
-          .from('Files')
-          .upload(photo.name, imageFile)
-          .then((response) {
-        filePath = response;
-        // print(filePath);
+    await client.storage
+        .from('Files')
+        .upload(photo.name, imageFile)
+        .then((response) {
+      filePath = response;
+      // print(filePath);
+    });
+
+    try {
+      await supabase.from('messages').insert({
+        'profile_id': myUserId,
+        'content':
+            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
+        'file_path': '',
       });
-
-      try {
-        await supabase.from('messages').insert({
-          'profile_id': myUserId,
-          'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
-          'file_path': '',
-        });
-        context.showSnackBar(
-          message: "📷 Foto subida correctamente 🖼",
-          messageColor: pickerColor,
-          // context: context,
-        );
-      } on StorageException catch (error) {
-        context.showErrorSnackBar(
-          message: error.message,
-        );
-      } catch (e) {
-        context.showErrorSnackBar(
-          message: unexpectedErrorMessage,
-        );
-      }
+      context.showSnackBar(
+        message: "Foto subida correctamente 🖼",
+        messageColor: pickerColor,
+        title: '📷 Listo!!!',
+      );
+    } on StorageException catch (error) {
+      context.showErrorSnackBar(
+        message: error.message,
+      );
+    } catch (e) {
+      context.showErrorSnackBar(
+        message: unexpectedErrorMessage,
+      );
     }
   }
 }
@@ -596,9 +592,10 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                                 widget.message.content);
                                             context.showSnackBar(
                                               message:
-                                                  'Archivo guardado en la galeria 📂',
+                                                  'guardado en la galeria 📂',
                                               messageColor: Theme.of(context)
                                                   .primaryColor,
+                                              title: '📎 Tu archivo fue',
                                               // context: context,
                                             );
                                           } else {
@@ -629,8 +626,8 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     IconButton(
-                                      onPressed: () async {
-                                        await launchUrl(_url);
+                                      onPressed: () {
+                                        launchUrl(_url);
                                       },
                                       iconSize: 80,
                                       icon: const Icon(
@@ -705,8 +702,8 @@ void copyImageUrlToClipboard(BuildContext context, imageUrl) {
   Clipboard.setData(ClipboardData(text: imageUrl));
 
   context.showSnackBar(
-    message: "Copiado al 📋",
-    messageColor: pickerColor,
+    message: "copiado al 📋",
+    messageColor: pickerColor, title: '🔗 Enlace ',
     // context: context,
   );
 }
@@ -749,9 +746,9 @@ class _VideoAlertDialogState extends State<VideoAlertDialog> {
 
   @override
   Widget build(BuildContext context) {
-    Size screenSize = MediaQuery.of(context).size;
-    double containerWidth = screenSize.width * 0.95;
-    double containerHeight = screenSize.height * 0.95;
+    // Size screenSize = MediaQuery.of(context).size;
+    // double containerWidth = screenSize.width * 0.95;
+    // double containerHeight = screenSize.height * 0.95;
     return AlertDialog(
       insetPadding: const EdgeInsets.only(),
       contentPadding: EdgeInsets.zero,
