@@ -1,6 +1,10 @@
 import 'dart:io';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 
+import 'package:media_kit/media_kit.dart'; // Provides [Player], [Media], [Playlist] etc.
+import 'package:media_kit_video/media_kit_video.dart'; // Provides [VideoController] & [Video] etc.
+// import 'package:video_player/video_player.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
@@ -16,7 +20,6 @@ import 'package:personal_messenger/constants.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../theme/app_theme.dart';
@@ -257,7 +260,6 @@ class _MessageBarState extends State<_MessageBar> {
   @override
   void dispose() {
     _textController.dispose();
-
     super.dispose();
   }
 
@@ -443,26 +445,27 @@ class _ChatBubble extends StatefulWidget {
 class _ChatBubbleState extends State<_ChatBubble> {
   bool isPlay = true;
 
-  late VideoPlayerController _controller;
-  @override
-  void initState() {
-    super.initState();
-    if (_isVideo(widget.message.content)) {
-      _controller =
-          VideoPlayerController.networkUrl(Uri.parse(widget.message.content))
-            ..initialize().then((_) {
-              setState(() {});
-            });
-    } else {
-      _controller = VideoPlayerController.asset('');
-    }
-  }
+  // late VideoPlayerController _controller;
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   if (_isVideo(widget.message.content)) {
+  //     _controller =
+  //         VideoPlayerController.networkUrl(Uri.parse(widget.message.content))
+  //           ..initialize().then((_) {
+  //             setState(() {});
+  //           });
+  //   } else {
+  //     _controller = VideoPlayerController.asset('');
+  //   }
+  // }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   // _controller.dispose();
+  //   player.dispose();
+  //   super.dispose();
+  // }
 
   bool _isVideo(String url) {
     final videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'];
@@ -524,9 +527,9 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                         Navigator.of(context).pop();
                                         widget.message.filePath.isNotEmpty
                                             ? setState(() {
-                                                _controller.pause();
-                                                _controller
-                                                    .seekTo(Duration.zero);
+                                                // _controller.pause();
+                                                // _controller
+                                                //     .seekTo(Duration.zero);
                                               })
                                             : null;
                                       },
@@ -542,15 +545,8 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                         )
                                       : Builder(
                                           builder: (context) {
-                                            _controller = VideoPlayerController
-                                                .networkUrl(Uri.parse(
-                                                    widget.message.content))
-                                              ..initialize().then((_) {
-                                                _controller.play();
-                                              });
-
                                             return VideoAlertDialog(
-                                                _controller);
+                                                widget.message.content);
                                           },
                                         ),
                                   const SizedBox(height: 2),
@@ -722,33 +718,29 @@ Future<String?> videoThumbnail(path) async {
 }
 
 class VideoAlertDialog extends StatefulWidget {
-  final VideoPlayerController controller;
+  final String video_url;
 
-  VideoAlertDialog(this.controller);
+  VideoAlertDialog(this.video_url);
 
   @override
   _VideoAlertDialogState createState() => _VideoAlertDialogState();
 }
 
 class _VideoAlertDialogState extends State<VideoAlertDialog> {
-  bool isPlaying = true;
+  // Create a [Player] to control playback.
+  late final player = Player();
+  // Create a [VideoController] to handle video output from [Player].
+  late final controller = VideoController(player);
 
-  void togglePlayPause() {
-    setState(() {
-      isPlaying = !isPlaying;
-      if (isPlaying) {
-        widget.controller.play();
-      } else {
-        widget.controller.pause();
-      }
-    });
+  @override
+  void dispose() {
+    player.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Size screenSize = MediaQuery.of(context).size;
-    // double containerWidth = screenSize.width * 0.95;
-    // double containerHeight = screenSize.height * 0.95;
+    player.open(Media(widget.video_url));
     return AlertDialog(
       insetPadding: const EdgeInsets.only(),
       contentPadding: EdgeInsets.zero,
@@ -760,38 +752,14 @@ class _VideoAlertDialogState extends State<VideoAlertDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               AspectRatio(
-                // aspectRatio: screenSize.height / screenSize.width,
                 aspectRatio: 4 / 2,
-                child: VideoPlayer(widget.controller),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                      onPressed: () {
-                        setState(() {
-                          if (widget.controller.value.isPlaying) {
-                            widget.controller.pause();
-                          } else {
-                            widget.controller.play();
-                          }
-                          togglePlayPause();
-                        });
-                      },
-                      icon: isPlaying
-                          ? const Icon(Icons.pause)
-                          : const Icon(Icons.play_arrow)),
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        widget.controller.pause();
-                        widget.controller.seekTo(Duration.zero);
-                        isPlaying = false;
-                      });
-                    },
-                    icon: const Icon(Icons.stop),
-                  ),
-                ],
+                child:
+                    //
+                    SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: MediaQuery.of(context).size.width * 9.0 / 16.0,
+                  child: Video(controller: controller),
+                ),
               ),
             ],
           ),
