@@ -1,14 +1,10 @@
 import 'dart:io';
-import 'package:camera_platform_interface/camera_platform_interface.dart';
 
-import 'package:media_kit/media_kit.dart'; // Provides [Player], [Media], [Playlist] etc.
-import 'package:media_kit_video/media_kit_video.dart'; // Provides [VideoController] & [Video] etc.
-// import 'package:video_player/video_player.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
-import 'package:flutter_file_downloader/flutter_file_downloader.dart';
-import 'package:image_picker/image_picker.dart';
+
 import 'package:path_provider/path_provider.dart';
 
 // ignore: library_prefixes
@@ -17,17 +13,20 @@ import 'package:provider/provider.dart' as Prov;
 import 'package:personal_messenger/models/message.dart';
 import 'package:personal_messenger/models/profile.dart';
 import 'package:personal_messenger/constants.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:timeago/timeago.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
+import '../functions/downloadFile.dart';
+import '../functions/submitCamera.dart';
+import '../functions/submitFile.dart';
+import '../functions/submitMessage.dart';
 import '../theme/app_theme.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/services.dart';
 
-import 'camera_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
+import 'VideoAlertDialog.dart';
 
 /// Page to chat with someone.
 ///
@@ -98,7 +97,6 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     return Scaffold(
-      // appBar: AppBar(title: const Text('Chat')),
       appBar: AppBar(
         backgroundColor: pickerColor,
         title: const Text('Chat'),
@@ -126,9 +124,17 @@ class _ChatPageState extends State<ChatPage> {
                           Navigator.of(context).pop();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: pickerColor,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
                         ),
-                        child: const Text('Got it'),
+                        child: const Text(
+                          'Ok',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.0,
+                          ),
+                        ),
                       ),
                     ],
                   );
@@ -216,13 +222,13 @@ class _MessageBarState extends State<_MessageBar> {
             children: [
               IconButton(
                 onPressed: () {
-                  _submitCamera();
+                  submitCamera(context);
                 },
                 icon: const Icon(Icons.camera_alt),
               ),
               IconButton(
                 onPressed: () {
-                  _submitFile();
+                  submitFile(context);
                 },
                 icon: const Icon(Icons.cloud_upload_outlined),
               ),
@@ -241,7 +247,7 @@ class _MessageBarState extends State<_MessageBar> {
                 ),
               ),
               TextButton(
-                onPressed: () => _submitMessage(),
+                onPressed: () => submitMessage(context, _textController),
                 child: const Text('Send'),
               ),
             ],
@@ -262,170 +268,6 @@ class _MessageBarState extends State<_MessageBar> {
     _textController.dispose();
     super.dispose();
   }
-
-  void _submitMessage() async {
-    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-    Color pickerColor = themeModel.colorTheme;
-    final text = _textController.text;
-    final myUserId = supabase.auth.currentUser!.id;
-    if (text.isEmpty) {
-      context.showSnackBar(
-        message: 'Escribe un mensaje',
-        messageColor: pickerColor, title: 'No tan rapido 📣',
-        // context: context,
-      );
-      return;
-    }
-    _textController.clear();
-    try {
-      await supabase.from('messages').insert({
-        'profile_id': myUserId,
-        'content': text,
-        'file_path': '',
-      });
-    } on PostgrestException catch (Error) {
-      context.showErrorSnackBar(message: Error.message);
-    } catch (_) {
-      context.showErrorSnackBar(message: unexpectedErrorMessage);
-    }
-  }
-
-  void _submitFile() async {
-    String supabaseFilePath = '';
-    String thumbnailFilePath = '';
-    String _pickedFileName = '';
-    final myUserId = supabase.auth.currentUser!.id;
-    final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
-    var pickedFile = await FilePicker.platform.pickFiles(allowMultiple: false);
-    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-    Color pickerColor = themeModel.colorTheme;
-
-    if (pickedFile != null) {
-      final file = File(pickedFile.files.first.path!);
-      await client.storage
-          .from('Files')
-          .upload(pickedFile.files.first.name, file)
-          .then((response) {
-        supabaseFilePath = response;
-      });
-
-      bool _isVideo(String url) {
-        final videoExtensions = [
-          '.mp4',
-          '.avi',
-          '.mov',
-          '.mkv',
-          '.flv',
-          '.wmv'
-        ];
-        final fileExtension = url.toLowerCase();
-
-        return videoExtensions
-            .any((extension) => fileExtension.endsWith(extension));
-      }
-
-      bool isVideoLink = _isVideo(supabaseFilePath);
-      if (isVideoLink) {
-        try {
-          String? thumbnailPath = await videoThumbnail(
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath');
-          final miniatura = File(thumbnailPath!);
-          _pickedFileName = pickedFile.files.first.name;
-
-          _pickedFileName =
-              _pickedFileName.substring(0, _pickedFileName.lastIndexOf('.'));
-
-          await client.storage
-              .from('Files')
-              .upload('$_pickedFileName.png', miniatura)
-              .then((response) {
-            thumbnailFilePath =
-                'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$response';
-          });
-        } catch (e) {
-          print(e);
-        }
-      } else {
-        thumbnailFilePath = '';
-      }
-
-      try {
-        await supabase.from('messages').insert({
-          'profile_id': myUserId,
-          'content':
-              'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$supabaseFilePath',
-          'file_path': thumbnailFilePath,
-        });
-
-        context.showSnackBar(
-          message: "📎 Archivo subido 📂",
-          messageColor: pickerColor,
-          title: '😎 Listo!!!',
-        );
-      } on StorageException catch (error) {
-        context.showErrorSnackBar(
-          message: error.message,
-        );
-      } catch (e) {
-        context.showErrorSnackBar(
-          message: unexpectedErrorMessage,
-        );
-      }
-    }
-  }
-
-  void _submitCamera() async {
-    final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-    Color pickerColor = themeModel.colorTheme;
-    final ImagePicker picker = ImagePicker();
-
-    XFile? photo;
-
-    if (Platform.isWindows) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const windows_camera()),
-      );
-    } else {
-      photo = await picker.pickImage(source: ImageSource.camera);
-    }
-
-    String filePath = '';
-    final myUserId = supabase.auth.currentUser!.id;
-    final SupabaseClient client = SupabaseClient(supabaseUrl, supabaseKey);
-
-    final File imageFile = File(photo!.path);
-
-    await client.storage
-        .from('Files')
-        .upload(photo.name, imageFile)
-        .then((response) {
-      filePath = response;
-      // print(filePath);
-    });
-
-    try {
-      await supabase.from('messages').insert({
-        'profile_id': myUserId,
-        'content':
-            'https://bdhwkukeejylmfoxyygb.supabase.co/storage/v1/object/public/$filePath',
-        'file_path': '',
-      });
-      context.showSnackBar(
-        message: "Foto subida correctamente 🖼",
-        messageColor: pickerColor,
-        title: '📷 Listo!!!',
-      );
-    } on StorageException catch (error) {
-      context.showErrorSnackBar(
-        message: error.message,
-      );
-    } catch (e) {
-      context.showErrorSnackBar(
-        message: unexpectedErrorMessage,
-      );
-    }
-  }
 }
 
 class _ChatBubble extends StatefulWidget {
@@ -445,35 +287,6 @@ class _ChatBubble extends StatefulWidget {
 class _ChatBubbleState extends State<_ChatBubble> {
   bool isPlay = true;
 
-  // late VideoPlayerController _controller;
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   if (_isVideo(widget.message.content)) {
-  //     _controller =
-  //         VideoPlayerController.networkUrl(Uri.parse(widget.message.content))
-  //           ..initialize().then((_) {
-  //             setState(() {});
-  //           });
-  //   } else {
-  //     _controller = VideoPlayerController.asset('');
-  //   }
-  // }
-
-  // @override
-  // void dispose() {
-  //   // _controller.dispose();
-  //   player.dispose();
-  //   super.dispose();
-  // }
-
-  bool _isVideo(String url) {
-    final videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv'];
-    final fileExtension = url.toLowerCase();
-    return videoExtensions
-        .any((extension) => fileExtension.endsWith(extension));
-  }
-
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
@@ -488,7 +301,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
         CircleAvatar(
           child: widget.profile == null
               ? preloader
-              : Text(widget.profile!.username.substring(0, 2)),
+              : Text(widget.profile!.username.substring(0, 3)),
         ),
       const SizedBox(width: 12),
       Flexible(
@@ -525,13 +338,6 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                       icon: const Icon(Icons.arrow_back_ios),
                                       onPressed: () {
                                         Navigator.of(context).pop();
-                                        widget.message.filePath.isNotEmpty
-                                            ? setState(() {
-                                                // _controller.pause();
-                                                // _controller
-                                                //     .seekTo(Duration.zero);
-                                              })
-                                            : null;
                                       },
                                     ),
                                   ),
@@ -584,16 +390,8 @@ class _ChatBubbleState extends State<_ChatBubble> {
                                               Platform.isIOS) {
                                             Navigator.of(context).pop();
 
-                                            _downloadFile(context,
+                                            downloadFile(context,
                                                 widget.message.content);
-                                            context.showSnackBar(
-                                              message:
-                                                  'guardado en la galeria 📂',
-                                              messageColor: Theme.of(context)
-                                                  .primaryColor,
-                                              title: '📎 Tu archivo fue',
-                                              // context: context,
-                                            );
                                           } else {
                                             await launchUrl(_url);
                                           }
@@ -672,35 +470,14 @@ class _ChatBubbleState extends State<_ChatBubble> {
   }
 }
 
-void _downloadFile(BuildContext context, String url) async {
-  bool dounloadError = false;
-  var errorMessage;
-  await FileDownloader.downloadFile(
-    url: url,
-    onDownloadCompleted: (String path) {
-      dounloadError = false;
-    },
-    onDownloadError: (String error) {
-      dounloadError = true;
-
-      errorMessage = error;
-    },
-  );
-  if (dounloadError) {
-    context.showErrorSnackBar(
-        message: '❌ Error al descargar el archivo: $errorMessage');
-  }
-}
-
 void copyImageUrlToClipboard(BuildContext context, imageUrl) {
-  final themeModel = Prov.Provider.of<ThemeModel>(context, listen: false);
-  Color pickerColor = themeModel.colorTheme;
+  Color pickerColor = Theme.of(context).colorScheme.primary;
   Clipboard.setData(ClipboardData(text: imageUrl));
 
   context.showSnackBar(
     message: "copiado al 📋",
-    messageColor: pickerColor, title: '🔗 Enlace ',
-    // context: context,
+    messageColor: pickerColor,
+    title: '🔗 Enlace ',
   );
 }
 
@@ -715,56 +492,4 @@ Future<String?> videoThumbnail(path) async {
   );
 
   return fileName;
-}
-
-class VideoAlertDialog extends StatefulWidget {
-  final String video_url;
-
-  VideoAlertDialog(this.video_url);
-
-  @override
-  _VideoAlertDialogState createState() => _VideoAlertDialogState();
-}
-
-class _VideoAlertDialogState extends State<VideoAlertDialog> {
-  // Create a [Player] to control playback.
-  late final player = Player();
-  // Create a [VideoController] to handle video output from [Player].
-  late final controller = VideoController(player);
-
-  @override
-  void dispose() {
-    player.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    player.open(Media(widget.video_url));
-    return AlertDialog(
-      insetPadding: const EdgeInsets.only(),
-      contentPadding: EdgeInsets.zero,
-      content: FractionallySizedBox(
-        widthFactor: 0.90,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AspectRatio(
-                aspectRatio: 4 / 2,
-                child:
-                    //
-                    SizedBox(
-                  width: MediaQuery.of(context).size.width,
-                  height: MediaQuery.of(context).size.width * 9.0 / 16.0,
-                  child: Video(controller: controller),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

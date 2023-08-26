@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:personal_messenger/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/home_screen.dart';
+import 'package:provider/provider.dart' as Prov;
 
 /// Supabase client
 final supabase = Supabase.instance.client;
@@ -27,6 +29,9 @@ extension ShowSnackBar on BuildContext {
     required String message,
     required Color messageColor,
   }) {
+    final themeModel = Prov.Provider.of<ThemeModel>(this, listen: false);
+    Color pickerColor = themeModel.colorTheme;
+
     ScaffoldMessenger.of(this).showSnackBar(SnackBar(
       duration: const Duration(seconds: 2),
       content: Center(
@@ -35,7 +40,7 @@ extension ShowSnackBar on BuildContext {
           height: 100,
           width: 400,
           decoration: BoxDecoration(
-              color: messageColor,
+              color: pickerColor,
               borderRadius: const BorderRadius.all(Radius.circular(20))),
           child: Stack(
             children: [
@@ -77,6 +82,7 @@ extension ShowSnackBar on BuildContext {
 
   /// Displays a red snackbar indicating error
   void showErrorSnackBar({context, required String message}) {
+    context = context;
     showSnackBar(
       title: 'Ups🤔',
       message: message,
