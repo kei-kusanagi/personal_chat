@@ -5,7 +5,7 @@ import '../constants.dart';
 
 void submitMessage(
     BuildContext context, TextEditingController textController) async {
-  Color pickerColor = Theme.of(context).colorScheme.primary;
+  Color pickerColor = Theme.of(context).colorScheme.onPrimary;
   final text = textController.text;
   final myUserId = supabase.auth.currentUser!.id;
   if (text.isEmpty) {

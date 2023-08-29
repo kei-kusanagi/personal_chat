@@ -189,7 +189,7 @@ class _windows_cameraState extends State<windows_camera> {
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  icon: Icon(Icons.refresh),
+                  icon: const Icon(Icons.refresh),
                   iconSize: 45,
                 ),
                 IconButton(

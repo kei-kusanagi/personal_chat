@@ -37,32 +37,43 @@ class _LoginPageState extends State<LoginPage> {
     }
     if (mounted) {
       setState(() {
-        _isLoading = true;
+        _isLoading = false;
       });
     }
   }
+
+  final FocusNode _passwordFocusNode = FocusNode();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final FocusNode passwordFocusNode = FocusNode();
     return Scaffold(
       appBar: AppBar(title: const Text('Sign In')),
       body: ListView(
         padding: formPadding,
         children: [
           TextFormField(
+            onEditingComplete: () {
+              passwordFocusNode.requestFocus();
+            },
             controller: _emailController,
             decoration: const InputDecoration(labelText: 'Email'),
             keyboardType: TextInputType.emailAddress,
           ),
           formSpacer,
           TextFormField(
+            onEditingComplete: () {
+              _signIn();
+            },
+            focusNode: passwordFocusNode,
             controller: _passwordController,
             decoration: const InputDecoration(labelText: 'Password'),
             obscureText: true,

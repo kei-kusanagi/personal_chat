@@ -1,9 +1,13 @@
+// ignore_for_file: library_prefixes
+
 import 'package:flutter/material.dart';
-import 'package:personal_messenger/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'screens/home_screen.dart';
-import 'package:provider/provider.dart' as Prov;
+
+String supabaseUrl = 'https://bdhwkukeejylmfoxyygb.supabase.co';
+String supabaseKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkaHdrdWtlZWp5bG1mb3h5eWdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAyMzM1MjMsImV4cCI6MjAwNTgwOTUyM30.9civyOj1ITEsIAFcwc0nrQB6ihqEcsg2hp2emylRaRQ';
 
 /// Supabase client
 final supabase = Supabase.instance.client;
@@ -29,9 +33,6 @@ extension ShowSnackBar on BuildContext {
     required String message,
     required Color messageColor,
   }) {
-    final themeModel = Prov.Provider.of<ThemeModel>(this, listen: false);
-    Color pickerColor = themeModel.colorTheme;
-
     ScaffoldMessenger.of(this).showSnackBar(SnackBar(
       duration: const Duration(seconds: 2),
       content: Center(
@@ -40,7 +41,7 @@ extension ShowSnackBar on BuildContext {
           height: 100,
           width: 400,
           decoration: BoxDecoration(
-              color: pickerColor,
+              color: messageColor,
               borderRadius: const BorderRadius.all(Radius.circular(20))),
           child: Stack(
             children: [

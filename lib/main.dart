@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart' as provider;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'screens/home_screen.dart';
+// import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: appTheme.getTheme(),
-        home: home_screen(title: 'Personal Messenger 📨'));
+        // home: const home_screen(title: 'Personal Messenger 📨'));
+        home: const SplashPage());
   }
 }

@@ -1,3 +1,5 @@
+// ignore_for_file: camel_case_types
+
 import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:personal_messenger/screens/splash_screen.dart';
@@ -5,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 
 class home_screen extends StatefulWidget {
-  home_screen({super.key, required this.title});
+  const home_screen({super.key, required this.title});
 
   final String title;
 
@@ -56,7 +58,6 @@ class _home_screenState extends State<home_screen> {
                     ),
                     actions: <Widget>[
                       ElevatedButton(
-                        child: const Text('Got it'),
                         onPressed: () {
                           setState(() {
                             themeModel.colorTheme = pickerColor;
@@ -66,22 +67,24 @@ class _home_screenState extends State<home_screen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: pickerColor,
                         ),
+                        child: const Text('Got it'),
                       ),
                     ],
                   );
                 },
               );
             },
-            icon: Icon(Icons.color_lens),
+            icon: const Icon(Icons.color_lens),
           ),
           IconButton(
-            icon:
-                themeModel.isDark ? Icon(Icons.sunny) : Icon(Icons.nights_stay),
+            icon: themeModel.isDark
+                ? const Icon(Icons.sunny)
+                : const Icon(Icons.nights_stay),
             onPressed: toggleDarkMode,
           ),
         ],
       ),
-      body: SplashPage(),
+      body: const SplashPage(),
     );
   }
 }

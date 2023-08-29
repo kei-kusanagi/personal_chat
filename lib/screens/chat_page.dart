@@ -32,10 +32,6 @@ import 'VideoAlertDialog.dart';
 ///
 /// Displays chat bubbles as a ListView and TextField to enter new chat.
 
-String supabaseUrl = 'https://bdhwkukeejylmfoxyygb.supabase.co';
-String supabaseKey =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkaHdrdWtlZWp5bG1mb3h5eWdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTAyMzM1MjMsImV4cCI6MjAwNTgwOTUyM30.9civyOj1ITEsIAFcwc0nrQB6ihqEcsg2hp2emylRaRQ';
-
 class ChatPage extends StatefulWidget {
   const ChatPage({Key? key}) : super(key: key);
 
@@ -125,7 +121,7 @@ class _ChatPageState extends State<ChatPage> {
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
-                              Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.inversePrimary,
                         ),
                         child: const Text(
                           'Ok',
@@ -217,30 +213,33 @@ class _MessageBarState extends State<_MessageBar> {
       color: Theme.of(context).splashColor,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding:
+              const EdgeInsets.only(left: 12.0, right: 12.0, top: 8, bottom: 8),
           child: Row(
             children: [
-              IconButton(
+              TextButton(
                 onPressed: () {
                   submitCamera(context);
                 },
-                icon: const Icon(Icons.camera_alt),
+                child: const Icon(Icons.camera_alt),
               ),
-              IconButton(
+              TextButton(
                 onPressed: () {
                   submitFile(context);
                 },
-                icon: const Icon(Icons.cloud_upload_outlined),
+                child: const Icon(Icons.cloud_upload_outlined),
               ),
               Expanded(
                 child: TextFormField(
+                  onEditingComplete: () =>
+                      submitMessage(context, _textController),
                   keyboardType: TextInputType.text,
                   maxLines: null,
                   autofocus: true,
                   controller: _textController,
                   decoration: const InputDecoration(
                     hintText: 'Type a message',
-                    border: InputBorder.none,
+                    // border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     contentPadding: EdgeInsets.all(8),
                   ),
@@ -306,10 +305,7 @@ class _ChatBubbleState extends State<_ChatBubble> {
       const SizedBox(width: 12),
       Flexible(
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: 8,
-            horizontal: 12,
-          ),
+          // padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
           decoration: BoxDecoration(
             color: widget.message.isMine
                 ? themeModel.colorTheme
@@ -448,7 +444,10 @@ class _ChatBubbleState extends State<_ChatBubble> {
                           ),
                   ),
                 )
-              : Text(widget.message.content),
+              : Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Text(widget.message.content),
+                ),
         ),
       ),
       const SizedBox(width: 12),
@@ -471,13 +470,13 @@ class _ChatBubbleState extends State<_ChatBubble> {
 }
 
 void copyImageUrlToClipboard(BuildContext context, imageUrl) {
-  Color pickerColor = Theme.of(context).colorScheme.primary;
+  Color pickerColor = Theme.of(context).colorScheme.inversePrimary;
   Clipboard.setData(ClipboardData(text: imageUrl));
 
   context.showSnackBar(
     message: "copiado al 📋",
-    messageColor: pickerColor,
     title: '🔗 Enlace ',
+    messageColor: pickerColor,
   );
 }
 

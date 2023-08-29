@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:flutter/material.dart';
 import 'package:flutter_file_downloader/flutter_file_downloader.dart';
 
@@ -10,7 +12,7 @@ void downloadFile(context, String url) async {
       dounloadError = false;
       context.showSnackBar(
         message: 'guardado en la galeria 📂',
-        messageColor: Theme.of(context).primaryColor,
+        messageColor: Theme.of(context).colorScheme.inversePrimary,
         title: '📎 Tu archivo fue',
       );
     },
